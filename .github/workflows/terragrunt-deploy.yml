@@ -105,7 +105,7 @@ jobs:
     steps:
       - name: Generate GitHub App Token
         id: app_token
-        uses: actions/create-github-app-token@v2.1.4
+        uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ inputs.gh_app_id || vars.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
@@ -113,7 +113,7 @@ jobs:
           repositories: 'honeyhive-terraform,honeyhive-workflows,tf-module-aws-iam,tf-module-aws-vpc,tf-module-aws-secrets-manager,tf-module-helm-argocd,tf-module-helm-karpenter,tf-module-helm-eso'
       
       - name: Checkout calling repository
-        uses: actions/checkout@v5.0.0
+        uses: actions/checkout@v5
         with:
           path: config-repo
           token: ${{ steps.app_token.outputs.token }}
@@ -140,14 +140,14 @@ jobs:
           echo "✅ Extracted account_id: $ACCOUNT_ID"
       
       - name: Configure AWS Credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v5.1.0
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ inputs.aws_oidc_role || vars.AWS_OIDC_ROLE }}
           role-session-name: github-actions-${{ github.run_id }}
           aws-region: ${{ inputs.aws_region }}
       
       - name: Setup Terragrunt
-        uses: autero1/action-terragrunt@v3.0.2
+        uses: autero1/action-terragrunt@v3
         with:
           terragrunt-version: ${{ inputs.terragrunt_version }}
           token: ${{ steps.app_token.outputs.token }}
