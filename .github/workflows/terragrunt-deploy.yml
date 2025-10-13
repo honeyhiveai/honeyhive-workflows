@@ -107,8 +107,6 @@ jobs:
         uses: actions/checkout@v5
         with:
           path: config-repo
-          # Use default GITHUB_TOKEN - do NOT use App token for calling repo
-          # Calling repo (apiary) should NOT be accessible via customer-installed App
       
       - name: Generate GitHub App Token
         id: app_token
@@ -117,7 +115,6 @@ jobs:
           app-id: ${{ inputs.gh_app_id || vars.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
           owner: honeyhiveai
-          # Only infrastructure repos - NOT apiary (customer-installed app)
           repositories: 'honeyhive-terraform,tf-module-aws-iam,tf-module-aws-vpc,tf-module-aws-secrets-manager,tf-module-helm-argocd,tf-module-helm-karpenter,tf-module-helm-eso'
       
       - name: Extract AWS Account ID from config
@@ -178,17 +175,12 @@ jobs:
       
       - name: Terragrunt Init
         run: |
-          cd config-repo/${{ inputs.working_directory }}
+          # Clone honeyhive-terraform to work from
+          git clone --depth 1 --branch "${TERRAFORM_REF}" "https://x-access-token:${{ steps.app_token.outputs.token }}@github.com/${TERRAFORM_REPO}.git" terraform-repo
           
-          SOURCE_URL="git::https://github.com/${TERRAFORM_REPO}.git"
+          cd terraform-repo
           
-          if [ "$LAYER" != "all" ]; then
-            SOURCE_URL="${SOURCE_URL}//${LAYER}"
-          fi
-          
-          SOURCE_URL="${SOURCE_URL}?ref=${TERRAFORM_REF}"
-          
-          echo "📦 Initializing with source: $SOURCE_URL"
+          echo "📦 Initializing Terragrunt in terraform-repo/${LAYER}"
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## 🚀 Terragrunt Deployment" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -201,16 +193,10 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           
           if [ "$LAYER" == "all" ]; then
-            terragrunt run-all init \
-              --terragrunt-source-update \
-              --terragrunt-source "$SOURCE_URL" \
-              --terragrunt-non-interactive
+            terragrunt run-all init --terragrunt-non-interactive
           else
-            terragrunt run-all init \
-              --terragrunt-working-dir "$LAYER" \
-              --terragrunt-source-update \
-              --terragrunt-source "$SOURCE_URL" \
-              --terragrunt-non-interactive
+            cd "$LAYER"
+            terragrunt run-all init --terragrunt-non-interactive
           fi
         env:
           TG_BASE_VARS: ${{ env.TG_BASE_VARS }}
@@ -221,25 +207,15 @@ jobs:
         id: plan
         if: inputs.action == 'plan' || inputs.action == 'apply'
         run: |
-          cd config-repo/${{ inputs.working_directory }}
+          cd terraform-repo
           
-          SOURCE_URL="git::https://github.com/${TERRAFORM_REPO}.git"
-          if [ "$LAYER" != "all" ]; then
-            SOURCE_URL="${SOURCE_URL}//${LAYER}"
-          fi
-          SOURCE_URL="${SOURCE_URL}?ref=${TERRAFORM_REF}"
-          
-          echo "📋 Running plan..."
+          echo "📋 Running plan in ${LAYER}..."
           
           if [ "$LAYER" == "all" ]; then
-            terragrunt run-all plan \
-              --terragrunt-source "$SOURCE_URL" \
-              --terragrunt-non-interactive
+            terragrunt run-all plan --terragrunt-non-interactive
           else
-            terragrunt run-all plan \
-              --terragrunt-working-dir "$LAYER" \
-              --terragrunt-source "$SOURCE_URL" \
-              --terragrunt-non-interactive
+            cd "$LAYER"
+            terragrunt run-all plan --terragrunt-non-interactive
           fi
         env:
           TG_BASE_VARS: ${{ env.TG_BASE_VARS }}
@@ -249,25 +225,15 @@ jobs:
       - name: Terragrunt Apply
         if: inputs.action == 'apply'
         run: |
-          cd config-repo/${{ inputs.working_directory }}
+          cd terraform-repo
           
-          SOURCE_URL="git::https://github.com/${TERRAFORM_REPO}.git"
-          if [ "$LAYER" != "all" ]; then
-            SOURCE_URL="${SOURCE_URL}//${LAYER}"
-          fi
-          SOURCE_URL="${SOURCE_URL}?ref=${TERRAFORM_REF}"
-          
-          echo "✅ Applying changes..."
+          echo "✅ Applying changes in ${LAYER}..."
           
           if [ "$LAYER" == "all" ]; then
-            terragrunt run-all apply \
-              --terragrunt-source "$SOURCE_URL" \
-              --terragrunt-non-interactive
+            terragrunt run-all apply --terragrunt-non-interactive
           else
-            terragrunt run-all apply \
-              --terragrunt-working-dir "$LAYER" \
-              --terragrunt-source "$SOURCE_URL" \
-              --terragrunt-non-interactive
+            cd "$LAYER"
+            terragrunt run-all apply --terragrunt-non-interactive
           fi
         env:
           TG_BASE_VARS: ${{ env.TG_BASE_VARS }}
@@ -277,27 +243,17 @@ jobs:
       - name: Terragrunt Destroy
         if: inputs.action == 'destroy'
         run: |
-          cd config-repo/${{ inputs.working_directory }}
-          
-          SOURCE_URL="git::https://github.com/${TERRAFORM_REPO}.git"
-          if [ "$LAYER" != "all" ]; then
-            SOURCE_URL="${SOURCE_URL}//${LAYER}"
-          fi
-          SOURCE_URL="${SOURCE_URL}?ref=${TERRAFORM_REF}"
+          cd terraform-repo
           
           echo "⚠️ WARNING: Destroying infrastructure!"
           echo "Environment: ${{ inputs.environment }}"
           echo "Layer: $LAYER"
           
           if [ "$LAYER" == "all" ]; then
-            terragrunt run-all destroy \
-              --terragrunt-source "$SOURCE_URL" \
-              --terragrunt-non-interactive
+            terragrunt run-all destroy --terragrunt-non-interactive
           else
-            terragrunt run-all destroy \
-              --terragrunt-working-dir "$LAYER" \
-              --terragrunt-source "$SOURCE_URL" \
-              --terragrunt-non-interactive
+            cd "$LAYER"
+            terragrunt run-all destroy --terragrunt-non-interactive
           fi
         env:
           TG_BASE_VARS: ${{ env.TG_BASE_VARS }}
