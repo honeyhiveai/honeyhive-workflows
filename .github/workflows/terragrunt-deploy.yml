@@ -175,7 +175,8 @@ jobs:
       
       - name: Terragrunt Init
         run: |
-          # Clone honeyhive-terraform to work from
+          # Clone honeyhive-terraform to work from (use absolute path to avoid nesting)
+          cd ${{ github.workspace }}
           git clone --depth 1 --branch "${TERRAFORM_REF}" "https://x-access-token:${{ steps.app_token.outputs.token }}@github.com/${TERRAFORM_REPO}.git" terraform-repo
           
           cd terraform-repo
