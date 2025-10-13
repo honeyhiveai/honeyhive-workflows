@@ -103,6 +103,13 @@ jobs:
       url: https://console.aws.amazon.com/
     
     steps:
+      - name: Checkout calling repository
+        uses: actions/checkout@v5
+        with:
+          path: config-repo
+          # Use default GITHUB_TOKEN - do NOT use App token for calling repo
+          # Calling repo (apiary) should NOT be accessible via customer-installed App
+      
       - name: Generate GitHub App Token
         id: app_token
         uses: actions/create-github-app-token@v2
@@ -110,13 +117,8 @@ jobs:
           app-id: ${{ inputs.gh_app_id || vars.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
           owner: honeyhiveai
-          repositories: 'honeyhive-terraform,honeyhive-workflows,tf-module-aws-iam,tf-module-aws-vpc,tf-module-aws-secrets-manager,tf-module-helm-argocd,tf-module-helm-karpenter,tf-module-helm-eso'
-      
-      - name: Checkout calling repository
-        uses: actions/checkout@v5
-        with:
-          path: config-repo
-          token: ${{ steps.app_token.outputs.token }}
+          # Only infrastructure repos - NOT apiary (customer-installed app)
+          repositories: 'honeyhive-terraform,tf-module-aws-iam,tf-module-aws-vpc,tf-module-aws-secrets-manager,tf-module-helm-argocd,tf-module-helm-karpenter,tf-module-helm-eso'
       
       - name: Extract AWS Account ID from config
         id: extract_config
