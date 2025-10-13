@@ -1,0 +1,121 @@
+# Version Tag and Release for Reusable Workflows
+# After merging to main, creates version tags for workflow references
+
+name: Version Tag and Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  determine-version:
+    name: Determine Next Semantic Version
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.bump.outputs.new_tag }}
+
+    steps:
+      - name: Checkout merge commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Bump version and push tag
+        id: bump
+        uses: anothrNick/github-tag-action@1.71.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: true
+          DEFAULT_BUMP: none
+          RELEASE_BRANCHES: main
+          BRANCH_HISTORY: last
+
+      - name: Sanity check for hashtag presence
+        run: |
+          if [ -z "${{ steps.bump.outputs.new_tag }}" ]; then
+            echo "::warning::No version hashtag found. Skipping release creation."
+            echo "Add one of #major #minor #patch to the PR title for automatic versioning."
+          else
+            echo "✅ New version tag: ${{ steps.bump.outputs.new_tag }}"
+          fi
+
+  create-github-release:
+    name: Create GitHub Release
+    needs: [determine-version]
+    if: needs.determine-version.outputs.tag != ''
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          CURRENT_TAG="${{ needs.determine-version.outputs.tag }}"
+          
+          echo "## What's Changed" > release_notes.md
+          echo "" >> release_notes.md
+          
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "**Full Changelog**: [\`$PREVIOUS_TAG...$CURRENT_TAG\`](https://github.com/${{ github.repository }}/compare/$PREVIOUS_TAG...$CURRENT_TAG)" >> release_notes.md
+            echo "" >> release_notes.md
+            
+            echo "### Commits" >> release_notes.md
+            git log "$PREVIOUS_TAG..$CURRENT_TAG" --pretty=format:"- %s (%h)" --no-merges >> release_notes.md
+          else
+            echo "Initial release" >> release_notes.md
+          fi
+          
+          echo "" >> release_notes.md
+          echo "## Usage in Workflows" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "Reference this version in your workflow files:" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "\`\`\`yaml" >> release_notes.md
+          echo "jobs:" >> release_notes.md
+          echo "  deploy:" >> release_notes.md
+          echo "    uses: ${{ github.repository }}/.github/workflows/terragrunt-deploy.yml@$CURRENT_TAG" >> release_notes.md
+          echo "    with:" >> release_notes.md
+          echo "      environment: production" >> release_notes.md
+          echo "    secrets: inherit" >> release_notes.md
+          echo "\`\`\`" >> release_notes.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ needs.determine-version.outputs.tag }}
+          name: Release ${{ needs.determine-version.outputs.tag }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+
+      - name: Post-release summary
+        run: |
+          echo "## 🎉 Release Created Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ needs.determine-version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Release URL:** https://github.com/${{ github.repository }}/releases/tag/${{ needs.determine-version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Usage" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`yaml" >> $GITHUB_STEP_SUMMARY
+          echo "jobs:" >> $GITHUB_STEP_SUMMARY
+          echo "  deploy:" >> $GITHUB_STEP_SUMMARY
+          echo "    uses: ${{ github.repository }}/.github/workflows/terragrunt-deploy.yml@${{ needs.determine-version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "    secrets: inherit" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+

@@ -1,0 +1,164 @@
+# Pull Request Validation for Reusable Workflows
+# Validates workflow YAML syntax and enforces version tagging
+
+name: Pull Request Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    paths:
+      - ".github/workflows/**"
+      - "*.yml"
+      - "*.yaml"
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason for manual trigger"
+        required: false
+        default: "Manual validation trigger"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  validate-workflows:
+    name: Validate Workflow YAML
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install YAML validation tools
+        run: |
+          pip install pyyaml yamllint
+          yamllint --version
+
+      - name: Validate workflow YAML files
+        run: |
+          echo "## 📋 Workflow YAML Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          FAILED=0
+          TOTAL=0
+          
+          # Validate all workflow YAML files
+          for yaml_file in .github/workflows/*.yml .github/workflows/*.yaml; do
+            if [ -f "$yaml_file" ]; then
+              TOTAL=$((TOTAL + 1))
+              echo "Validating: $yaml_file"
+              
+              # Check YAML syntax
+              if python3 -c "import yaml; yaml.safe_load(open('$yaml_file'))" 2>/dev/null; then
+                echo "  ✅ Valid YAML syntax"
+                echo "- ✅ \`$yaml_file\`: Valid" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "  ❌ Invalid YAML syntax"
+                echo "- ❌ \`$yaml_file\`: Invalid YAML syntax" >> $GITHUB_STEP_SUMMARY
+                FAILED=$((FAILED + 1))
+              fi
+            fi
+          done
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ $FAILED -eq 0 ]; then
+            echo "✅ **All $TOTAL workflow files valid**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Validation failed for $FAILED workflows**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+      - name: Check for required workflow fields
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔍 Workflow Structure Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check that workflow_call workflows have proper inputs/secrets
+          for workflow_file in .github/workflows/*.yml; do
+            if [ -f "$workflow_file" ] && grep -q "workflow_call:" "$workflow_file"; then
+              echo "- 📞 \`$(basename $workflow_file)\`: Reusable workflow" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+  require-version-tag:
+    name: Require Version Tag (#major/#minor/#patch/#none)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Check PR title for versioning hashtag
+        run: |
+          set -euo pipefail
+          TITLE="${{ github.event.pull_request.title }}"
+          echo "PR Title: $TITLE"
+          
+          echo "## 🏷️ Version Tag Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**PR Title:** $TITLE" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if echo "$TITLE" | grep -Eiq '#(major|minor|patch|none)\b'; then
+            TAG=$(echo "$TITLE" | grep -Eio '#(major|minor|patch|none)\b' | head -1)
+            echo "✅ **Version tag found:** $TAG" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            case "$TAG" in
+              *major*)
+                echo "📦 **Semantic Version Impact:** Breaking changes to workflows" >> $GITHUB_STEP_SUMMARY
+                ;;
+              *minor*)
+                echo "📦 **Semantic Version Impact:** New reusable workflows or features" >> $GITHUB_STEP_SUMMARY
+                ;;
+              *patch*)
+                echo "📦 **Semantic Version Impact:** Bug fixes to existing workflows" >> $GITHUB_STEP_SUMMARY
+                ;;
+              *none*)
+                echo "📦 **Semantic Version Impact:** No version bump (docs only)" >> $GITHUB_STEP_SUMMARY
+                ;;
+            esac
+            
+            echo "OK: Version tag present in PR title"
+          else
+            echo "❌ **Missing version tag**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please add one of these tags to your PR title:" >> $GITHUB_STEP_SUMMARY
+            echo "- \`#major\` - Breaking changes to workflows" >> $GITHUB_STEP_SUMMARY
+            echo "- \`#minor\` - New reusable workflows" >> $GITHUB_STEP_SUMMARY
+            echo "- \`#patch\` - Bug fixes" >> $GITHUB_STEP_SUMMARY
+            echo "- \`#none\` - Documentation only" >> $GITHUB_STEP_SUMMARY
+            
+            echo "::error::Missing hashtag. Add one of: #major, #minor, #patch, or #none to the PR title."
+            exit 1
+          fi
+
+  pr-summary:
+    name: Generate PR Summary
+    runs-on: ubuntu-latest
+    needs: [validate-workflows, require-version-tag]
+    if: always()
+    
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## 📊 Pull Request Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Workflow Validation | ${{ needs.validate-workflows.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Version Tag | ${{ needs.require-version-tag.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.validate-workflows.result }}" == "success" ] && \
+             [ "${{ needs.require-version-tag.result }}" == "success" ]; then
+            echo "✅ **All checks passed - Ready for review!**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Some checks failed - Please review and fix**" >> $GITHUB_STEP_SUMMARY
+          fi
+

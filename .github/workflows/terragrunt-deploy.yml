@@ -1,0 +1,287 @@
+# Reusable Terragrunt Deployment Workflow
+# This workflow can be called from deployment repositories to execute Terragrunt operations
+
+name: Terragrunt Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Environment configuration name (e.g., production-usw2)'
+        required: true
+        type: string
+      
+      layer:
+        description: 'Infrastructure layer to deploy (all, substrate, hosting, application)'
+        required: false
+        type: string
+        default: 'all'
+      
+      action:
+        description: 'Terraform action (plan, apply, destroy)'
+        required: false
+        type: string
+        default: 'plan'
+      
+      terraform_repo:
+        description: 'HoneyHive Terraform repository reference'
+        required: false
+        type: string
+        default: 'honeyhiveai/honeyhive-terraform'
+      
+      terraform_ref:
+        description: 'Git ref (tag/branch/SHA) of honeyhive-terraform to use'
+        required: false
+        type: string
+        default: 'main'
+      
+      config_path:
+        description: 'Path to YAML configuration file in calling repo'
+        required: false
+        type: string
+        default: 'configs'
+      
+      working_directory:
+        description: 'Working directory (defaults to repo root)'
+        required: false
+        type: string
+        default: '.'
+      
+      terragrunt_version:
+        description: 'Terragrunt version'
+        required: false
+        type: string
+        default: '0.55.0'
+      
+      terraform_version:
+        description: 'Terraform version'
+        required: false
+        type: string
+        default: '1.9.0'
+      
+      aws_region:
+        description: 'AWS region'
+        required: false
+        type: string
+        default: 'us-west-2'
+    
+    secrets:
+      AWS_ACCOUNT_ID:
+        description: 'Target AWS account ID'
+        required: true
+      AWS_OIDC_ROLE:
+        description: 'AWS IAM role ARN for OIDC authentication'
+        required: true
+      TWINGATE_API_TOKEN:
+        description: 'Twingate API token (if using Twingate)'
+        required: false
+      SLACK_TOKEN:
+        description: 'Slack token for notifications (if using ArgoCD)'
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+  terragrunt-deploy:
+    name: Terragrunt ${{ inputs.action }} - ${{ inputs.layer }}
+    runs-on: ubuntu-latest
+    
+    environment:
+      name: ${{ inputs.environment }}
+      url: https://console.aws.amazon.com/
+    
+    steps:
+      - name: Checkout calling repository
+        uses: actions/checkout@v4
+        with:
+          path: config-repo
+      
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          role-session-name: github-actions-${{ github.run_id }}
+          aws-region: ${{ inputs.aws_region }}
+      
+      - name: Setup Terragrunt
+        uses: autero1/action-terragrunt@v1.3.0
+        with:
+          terragrunt_version: ${{ inputs.terragrunt_version }}
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+      
+      - name: Validate configuration file exists
+        run: |
+          CONFIG_FILE="config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
+          
+          if [ ! -f "$CONFIG_FILE" ]; then
+            echo "::error::Configuration file not found: $CONFIG_FILE"
+            echo "❌ **Configuration file not found**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Expected: \`$CONFIG_FILE\`" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          
+          echo "✅ Configuration file found: $CONFIG_FILE"
+          
+          # Validate YAML syntax
+          if python3 -c "import yaml; yaml.safe_load(open('$CONFIG_FILE'))" 2>/dev/null; then
+            echo "✅ YAML syntax valid"
+          else
+            echo "::error::Invalid YAML syntax in configuration file"
+            exit 1
+          fi
+      
+      - name: Set environment variables
+        run: |
+          CONFIG_FILE="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
+          
+          echo "TG_BASE_VARS=$CONFIG_FILE" >> $GITHUB_ENV
+          echo "TERRAFORM_REPO=${{ inputs.terraform_repo }}" >> $GITHUB_ENV
+          echo "TERRAFORM_REF=${{ inputs.terraform_ref }}" >> $GITHUB_ENV
+          echo "LAYER=${{ inputs.layer }}" >> $GITHUB_ENV
+          echo "ACTION=${{ inputs.action }}" >> $GITHUB_ENV
+      
+      - name: Terragrunt Init
+        run: |
+          cd config-repo/${{ inputs.working_directory }}
+          
+          SOURCE_URL="git::https://github.com/${TERRAFORM_REPO}.git"
+          
+          if [ "$LAYER" != "all" ]; then
+            SOURCE_URL="${SOURCE_URL}//${LAYER}"
+          fi
+          
+          SOURCE_URL="${SOURCE_URL}?ref=${TERRAFORM_REF}"
+          
+          echo "📦 Initializing with source: $SOURCE_URL"
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🚀 Terragrunt Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: \`${{ inputs.environment }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Layer**: \`${{ inputs.layer }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Action**: \`${{ inputs.action }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Terraform Repo**: \`${{ inputs.terraform_repo }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Terraform Ref**: \`${{ inputs.terraform_ref }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$LAYER" == "all" ]; then
+            terragrunt run-all init \
+              --terragrunt-source-update \
+              --terragrunt-source "$SOURCE_URL" \
+              --terragrunt-non-interactive
+          else
+            terragrunt run-all init \
+              --terragrunt-working-dir "$LAYER" \
+              --terragrunt-source-update \
+              --terragrunt-source "$SOURCE_URL" \
+              --terragrunt-non-interactive
+          fi
+        env:
+          TG_BASE_VARS: ${{ env.TG_BASE_VARS }}
+          TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+      
+      - name: Terragrunt Plan
+        id: plan
+        if: inputs.action == 'plan' || inputs.action == 'apply'
+        run: |
+          cd config-repo/${{ inputs.working_directory }}
+          
+          SOURCE_URL="git::https://github.com/${TERRAFORM_REPO}.git"
+          if [ "$LAYER" != "all" ]; then
+            SOURCE_URL="${SOURCE_URL}//${LAYER}"
+          fi
+          SOURCE_URL="${SOURCE_URL}?ref=${TERRAFORM_REF}"
+          
+          echo "📋 Running plan..."
+          
+          if [ "$LAYER" == "all" ]; then
+            terragrunt run-all plan \
+              --terragrunt-source "$SOURCE_URL" \
+              --terragrunt-non-interactive
+          else
+            terragrunt run-all plan \
+              --terragrunt-working-dir "$LAYER" \
+              --terragrunt-source "$SOURCE_URL" \
+              --terragrunt-non-interactive
+          fi
+        env:
+          TG_BASE_VARS: ${{ env.TG_BASE_VARS }}
+          TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+      
+      - name: Terragrunt Apply
+        if: inputs.action == 'apply'
+        run: |
+          cd config-repo/${{ inputs.working_directory }}
+          
+          SOURCE_URL="git::https://github.com/${TERRAFORM_REPO}.git"
+          if [ "$LAYER" != "all" ]; then
+            SOURCE_URL="${SOURCE_URL}//${LAYER}"
+          fi
+          SOURCE_URL="${SOURCE_URL}?ref=${TERRAFORM_REF}"
+          
+          echo "✅ Applying changes..."
+          
+          if [ "$LAYER" == "all" ]; then
+            terragrunt run-all apply \
+              --terragrunt-source "$SOURCE_URL" \
+              --terragrunt-non-interactive
+          else
+            terragrunt run-all apply \
+              --terragrunt-working-dir "$LAYER" \
+              --terragrunt-source "$SOURCE_URL" \
+              --terragrunt-non-interactive
+          fi
+        env:
+          TG_BASE_VARS: ${{ env.TG_BASE_VARS }}
+          TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+      
+      - name: Terragrunt Destroy
+        if: inputs.action == 'destroy'
+        run: |
+          cd config-repo/${{ inputs.working_directory }}
+          
+          SOURCE_URL="git::https://github.com/${TERRAFORM_REPO}.git"
+          if [ "$LAYER" != "all" ]; then
+            SOURCE_URL="${SOURCE_URL}//${LAYER}"
+          fi
+          SOURCE_URL="${SOURCE_URL}?ref=${TERRAFORM_REF}"
+          
+          echo "⚠️ WARNING: Destroying infrastructure!"
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Layer: $LAYER"
+          
+          if [ "$LAYER" == "all" ]; then
+            terragrunt run-all destroy \
+              --terragrunt-source "$SOURCE_URL" \
+              --terragrunt-non-interactive
+          else
+            terragrunt run-all destroy \
+              --terragrunt-working-dir "$LAYER" \
+              --terragrunt-source "$SOURCE_URL" \
+              --terragrunt-non-interactive
+          fi
+        env:
+          TG_BASE_VARS: ${{ env.TG_BASE_VARS }}
+          TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+      
+      - name: Deployment Summary
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Duration**: ${{ steps.plan.conclusion != 'skipped' && steps.plan.outputs.duration || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+
