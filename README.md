@@ -26,9 +26,9 @@ jobs:
       action: plan
       terraform_ref: v1.0.0
     secrets:
-      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-      AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
+      GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
       TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
+      SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
 ```
 
 **Inputs**:
@@ -42,11 +42,24 @@ jobs:
 - `terraform_version` - Terraform version (default: 1.9.0)
 - `aws_region` - AWS region (default: us-west-2)
 
+**Inputs** (from calling workflow):
+- Can pass `aws_oidc_role` and `gh_app_id` as inputs
+- Or use repository variables: `vars.AWS_OIDC_ROLE` and `vars.GH_APP_ID`
+
 **Secrets**:
-- `AWS_ACCOUNT_ID` - Target AWS account ID (required)
-- `AWS_OIDC_ROLE` - AWS IAM role ARN for OIDC (required)
+- `GH_APP_PRIVATE_KEY` - GitHub App private key in PEM format (required)
 - `TWINGATE_API_TOKEN` - Twingate API token (optional)
 - `SLACK_TOKEN` - Slack token (optional)
+
+**Variables** (from calling repository):
+- `AWS_OIDC_ROLE` - AWS IAM role ARN in orchestration account
+  - Example: `arn:aws:iam::839515361289:role/HoneyhiveFederatedProvisioner`
+  - Kept as variable (not secret) for troubleshooting visibility
+- `GH_APP_ID` - GitHub App ID
+  - Example: `2088377`
+  - Kept as variable for quick identification during incidents
+
+**Note**: AWS account ID is extracted from the YAML configuration file. Each environment config specifies its target account.
 
 ## Versioning
 
