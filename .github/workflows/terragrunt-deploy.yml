@@ -105,14 +105,15 @@ jobs:
     steps:
       - name: Generate GitHub App Token
         id: app_token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2.1.4
         with:
           app-id: ${{ inputs.gh_app_id || vars.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
           owner: honeyhiveai
+          repositories: 'honeyhive-terraform,honeyhive-workflows,tf-module-aws-iam,tf-module-aws-vpc,tf-module-aws-secrets-manager,tf-module-helm-argocd,tf-module-helm-karpenter,tf-module-helm-eso'
       
       - name: Checkout calling repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5.0.0
         with:
           path: config-repo
           token: ${{ steps.app_token.outputs.token }}
@@ -139,26 +140,28 @@ jobs:
           echo "✅ Extracted account_id: $ACCOUNT_ID"
       
       - name: Configure AWS Credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5.1.0
         with:
           role-to-assume: ${{ inputs.aws_oidc_role || vars.AWS_OIDC_ROLE }}
           role-session-name: github-actions-${{ github.run_id }}
           aws-region: ${{ inputs.aws_region }}
       
       - name: Setup Terragrunt
-        uses: autero1/action-terragrunt@v1.3.0
+        uses: autero1/action-terragrunt@v3.0.2
         with:
-          terragrunt_version: ${{ inputs.terragrunt_version }}
+          terragrunt-version: ${{ inputs.terragrunt_version }}
+          token: ${{ steps.app_token.outputs.token }}
       
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ inputs.terraform_version }}
       
-      - name: Configure Git for GitHub App authentication
+      - name: Setup Git credentials for Terraform
         run: |
-          git config --global url."https://x-access-token:${{ steps.app_token.outputs.token }}@github.com/".insteadOf "https://github.com/"
-          echo "✅ Git configured to use GitHub App token for repository access"
+          git config --global credential.helper store
+          echo "https://x-access-token:${{ steps.app_token.outputs.token }}@github.com" > ~/.git-credentials
+          echo "✅ Git credentials configured for Terraform/Terragrunt module access"
       
       - name: Set environment variables
         run: |
