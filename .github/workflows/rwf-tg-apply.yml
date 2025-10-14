@@ -1,0 +1,159 @@
+name: 'Reusable Workflow - Terragrunt Apply'
+
+on:
+  workflow_call:
+    inputs:
+      stack_path:
+        description: 'Path to the stack in the caller repo (e.g., apiary/acme/usw2)'
+        required: true
+        type: string
+      overlay_ref:
+        description: 'Tag/SHA of this repo to checkout for overlay (optional)'
+        required: false
+        type: string
+        default: 'main'
+      tg_args:
+        description: 'Additional Terragrunt arguments (optional)'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      GH_APP_ID:
+        description: 'GitHub App ID for authentication'
+        required: true
+      GH_APP_PRIVATE_KEY:
+        description: 'GitHub App private key'
+        required: true
+      AWS_OIDC_ROLE:
+        description: 'AWS OIDC role ARN for authentication'
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+concurrency:
+  group: tg-${{ inputs.stack_path }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    name: 'Terragrunt Apply'
+    runs-on: ubuntu-latest
+    environment: production  # Requires approval
+    
+    steps:
+      # Step 1: Checkout the caller repository
+      - name: Checkout caller repository
+        uses: actions/checkout@v4
+        with:
+          path: stack
+      
+      # Step 2: Generate GitHub App token
+      - name: Generate GitHub App token
+        id: app_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: honeyhiveai
+          repositories: 'honeyhive-terraform,tf-module-aws-iam,tf-module-aws-vpc,tf-module-aws-secrets-manager,tf-module-helm-argocd,tf-module-helm-karpenter,tf-module-helm-eso'
+      
+      # Step 3: Checkout catalog repository for overlays
+      - name: Checkout catalog repository
+        uses: actions/checkout@v4
+        with:
+          repository: honeyhiveai/honeyhive-workflows
+          ref: ${{ inputs.overlay_ref }}
+          path: _catalog
+      
+      # Step 4: Setup Terraform and Terragrunt
+      - name: Setup Terragrunt
+        uses: ./_catalog/actions/setup-terragrunt
+        with:
+          token: ${{ steps.app_token.outputs.token }}
+      
+      # Step 5: Configure git authentication
+      - name: Configure git authentication
+        uses: ./_catalog/actions/git-auth-github-app
+        with:
+          token: ${{ steps.app_token.outputs.token }}
+      
+      # Step 6: Configure AWS credentials
+      - name: Configure AWS credentials
+        if: secrets.AWS_OIDC_ROLE != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          aws-region: us-west-2
+          role-duration-seconds: 3600
+      
+      # Step 7: Initialize summary
+      - name: Initialize apply summary
+        run: |
+          echo "## 🚀 Terragrunt Apply" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Stack:** \`${{ inputs.stack_path }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+      
+      # Step 8: Pre-apply validation
+      - name: Validate configuration
+        uses: gruntwork-io/terragrunt-action@v3
+        with:
+          tg_version: '0.66.9'
+          tg_dir: stack/${{ inputs.stack_path }}
+          tg_command: 'validate'
+          tg_add_approve: '0'
+      
+      # Step 9: Terragrunt init
+      - name: Terragrunt init
+        uses: gruntwork-io/terragrunt-action@v3
+        with:
+          tg_version: '0.66.9'
+          tg_dir: stack/${{ inputs.stack_path }}
+          tg_command: 'run-all init --upgrade'
+          tg_add_approve: '0'
+      
+      # Step 10: Terragrunt apply
+      - name: Terragrunt apply
+        id: apply
+        uses: gruntwork-io/terragrunt-action@v3
+        with:
+          tg_version: '0.66.9'
+          tg_dir: stack/${{ inputs.stack_path }}
+          tg_command: 'run-all apply ${{ inputs.tg_args }}'
+          tg_add_approve: '1'
+          tg_comment: '1'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      
+      # Step 11: Apply summary
+      - name: Apply summary
+        if: always()
+        run: |
+          echo "### 📊 Apply Results" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ steps.apply.outcome }}" == "success" ]]; then
+            echo "✅ Apply completed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Apply failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[View full apply output](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+      
+      # Step 12: Post-apply validation
+      - name: Post-apply validation
+        if: success()
+        working-directory: stack/${{ inputs.stack_path }}
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔍 Post-Apply Validation" >> $GITHUB_STEP_SUMMARY
+          
+          # Verify state exists
+          if terragrunt state list > /dev/null 2>&1; then
+            RESOURCE_COUNT=$(terragrunt state list | wc -l)
+            echo "✅ State verified: $RESOURCE_COUNT resources tracked" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Unable to verify state" >> $GITHUB_STEP_SUMMARY
+          fi

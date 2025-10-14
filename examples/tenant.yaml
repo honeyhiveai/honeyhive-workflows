@@ -1,0 +1,85 @@
+# Example tenant configuration
+# This file should be placed in apiary/{org}/{sregion}/tenant.yaml
+
+# Organization identifier (lowercase, no spaces)
+org: acme
+
+# Environment (dev, test, stage, prod)
+env: prod
+
+# Short region code (use1, usw2, euw1, euc1, apse4, apse2)
+sregion: usw2
+
+# Full AWS region name
+region: us-west-2
+
+# Deployment identifier (unique within org/env/region)
+deployment: dataplane-acme
+
+# Infrastructure layer (substrate, hosting, application)
+layer: hosting
+
+# Service being deployed (vpc, eks, s3, database, etc.)
+service: eks
+
+# AWS account ID (optional, for validation)
+account_id: "123456789012"
+
+# Network configuration
+network:
+  cidr: 10.42.0.0/16
+  availability_zones:
+    - us-west-2a
+    - us-west-2b
+    - us-west-2c
+  private_subnets:
+    - 10.42.1.0/24
+    - 10.42.2.0/24
+    - 10.42.3.0/24
+  public_subnets:
+    - 10.42.101.0/24
+    - 10.42.102.0/24
+    - 10.42.103.0/24
+
+# Feature flags for optional components
+features:
+  karpenter: true  # Enabled by default for node management
+  external_secrets: true  # Enabled by default for secrets management
+  aws_load_balancer_controller: true  # Enabled by default for ingress
+  twingate: false  # VPN access (optional)
+  observability: false  # Monitoring stack (optional)
+
+# EKS cluster configuration (for hosting/kubernetes stacks)
+# Note: Node configuration is handled by Karpenter
+cluster:
+  version: "1.29"
+
+# Database configuration (for application/database stacks)
+database:
+  engine: postgres
+  engine_version: "15.4"
+  instance_class: db.t3.medium
+  allocated_storage: 100
+  multi_az: true
+  backup_retention_period: 30
+
+# S3 configuration (for application/s3 stacks)
+s3:
+  versioning: true
+  encryption: AES256
+  lifecycle_rules:
+    - id: archive_old_objects
+      enabled: true
+      transition_days: 90
+      storage_class: GLACIER
+
+# Custom tags (merged with default tags from overlay)
+tags:
+  CostCenter: engineering
+  Project: data-platform
+  Contact: platform-team@acme.com
+  Compliance: GDPR
+
+# State bucket override (optional - defaults to honeyhive-federated-{sregion}-state)
+# Useful for BYOC scenarios where tenant manages their own state
+# state_bucket: acme-terraform-state-usw2

@@ -1,0 +1,20 @@
+name: 'Git Auth GitHub App'
+description: 'Configure git to use GitHub App token for authentication'
+inputs:
+  token:
+    description: 'GitHub App token'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - name: Configure git authentication
+      shell: bash
+      run: |
+        # Configure git credential helper for Terraform/Terragrunt module access
+        git config --global credential.helper store
+        echo "https://x-access-token:${{ inputs.token }}@github.com" > ~/.git-credentials
+        
+        # Set safe directory for GitHub Actions
+        git config --global --add safe.directory '*'
+        
+        echo "✅ Git credentials configured for Terraform/Terragrunt module access"

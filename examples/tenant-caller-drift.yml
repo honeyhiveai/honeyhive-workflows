@@ -1,0 +1,94 @@
+name: 'Terragrunt Drift Detection'
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      stack_path:
+        description: 'Specific stack to check (leave empty for all)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  issues: write
+
+jobs:
+  list_stacks:
+    name: 'List Stacks to Check'
+    runs-on: ubuntu-latest
+    outputs:
+      stacks: ${{ steps.list.outputs.stacks }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: List all stacks
+        id: list
+        run: |
+          if [[ -n "${{ inputs.stack_path }}" ]]; then
+            # Single stack specified
+            echo "stacks=[\"${{ inputs.stack_path }}\"]" >> $GITHUB_OUTPUT
+          else
+            # Find all stacks
+            STACKS=$(find apiary -type f -name "terragrunt.hcl" -exec dirname {} \; | sort | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            echo "Found stacks: $STACKS"
+            echo "stacks=$STACKS" >> $GITHUB_OUTPUT
+          fi
+
+  drift_check:
+    name: 'Check Drift - ${{ matrix.stack }}'
+    needs: list_stacks
+    if: needs.list_stacks.outputs.stacks != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        stack: ${{ fromJson(needs.list_stacks.outputs.stacks) }}
+      fail-fast: false
+      max-parallel: 5  # Run up to 5 drift checks in parallel
+    
+    steps:
+      # Call the reusable drift detection workflow
+      - name: Check for drift
+        uses: honeyhiveai/honeyhive-workflows/.github/workflows/rwf-tg-drift.yml@v1
+        with:
+          stack_path: ${{ matrix.stack }}
+          overlay_ref: v1  # Pin to a specific version of the catalog
+          notification_webhook: ${{ secrets.DRIFT_NOTIFICATION_WEBHOOK }}
+        secrets:
+          GH_APP_ID: ${{ secrets.GH_APP_ID }}
+          GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
+          NOTIFICATION_WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+
+  drift_summary:
+    name: 'Drift Detection Summary'
+    needs: drift_check
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate summary report
+        run: |
+          echo "## 🔍 Drift Detection Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Run Type:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ needs.drift_check.result }}" == "success" ]]; then
+            echo "### ✅ All drift checks completed successfully" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Check individual job results for drift status." >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.drift_check.result }}" == "failure" ]]; then
+            echo "### ⚠️ Some drift checks failed or detected drift" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Review the individual job results and created issues." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ❌ Drift detection was cancelled or skipped" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[View all job results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY

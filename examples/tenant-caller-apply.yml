@@ -1,0 +1,111 @@
+name: 'Terragrunt Apply - Tenant Stacks'
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apiary/**/*.yaml'
+      - 'apiary/**/*.hcl'
+  workflow_dispatch:
+    inputs:
+      stack_path:
+        description: 'Specific stack to apply (e.g., apiary/acme/usw2)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+  detect_changes:
+    name: 'Detect Changed Stacks'
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    outputs:
+      stacks: ${{ steps.detect.outputs.stacks }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      
+      - name: Detect changed stacks
+        id: detect
+        run: |
+          # Get list of changed files in the last commit
+          CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD | grep -E '^apiary/[^/]+/[^/]+/' | cut -d/ -f1-3 | sort -u || true)
+          
+          if [[ -z "$CHANGED_FILES" ]]; then
+            echo "No stack changes detected"
+            echo "stacks=[]" >> $GITHUB_OUTPUT
+          else
+            # Convert to JSON array
+            STACKS_JSON=$(echo "$CHANGED_FILES" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            echo "Detected changed stacks: $STACKS_JSON"
+            echo "stacks=$STACKS_JSON" >> $GITHUB_OUTPUT
+          fi
+
+  plan_and_apply:
+    name: 'Plan & Apply ${{ matrix.stack || inputs.stack_path }}'
+    needs: [detect_changes]
+    if: |
+      (github.event_name == 'push' && needs.detect_changes.outputs.stacks != '[]') ||
+      (github.event_name == 'workflow_dispatch' && inputs.stack_path != '')
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        stack: ${{ github.event_name == 'push' && fromJson(needs.detect_changes.outputs.stacks) || fromJson(format('["{0}"]', inputs.stack_path)) }}
+      fail-fast: false
+      max-parallel: 2  # Limit concurrent applies
+    
+    steps:
+      # First run plan to see what will change
+      - name: Plan Terragrunt stack
+        uses: honeyhiveai/honeyhive-workflows/.github/workflows/rwf-tg-plan.yml@v1
+        with:
+          stack_path: ${{ matrix.stack }}
+          overlay_ref: v1  # Pin to a specific version of the catalog
+        secrets:
+          GH_APP_ID: ${{ secrets.GH_APP_ID }}
+          GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
+      
+      # Then apply the changes
+      - name: Apply Terragrunt stack
+        uses: honeyhiveai/honeyhive-workflows/.github/workflows/rwf-tg-apply.yml@v1
+        with:
+          stack_path: ${{ matrix.stack }}
+          overlay_ref: v1  # Pin to a specific version of the catalog
+        secrets:
+          GH_APP_ID: ${{ secrets.GH_APP_ID }}
+          GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
+
+  summary:
+    name: 'Deployment Summary'
+    runs-on: ubuntu-latest
+    needs: plan_and_apply
+    if: always()
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## 📊 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Actor:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ needs.plan_and_apply.result }}" == "success" ]]; then
+            echo "### ✅ All deployments successful" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.plan_and_apply.result }}" == "failure" ]]; then
+            echo "### ❌ Some deployments failed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ⚠️ Deployments were skipped or cancelled" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,263 @@
+name: 'Reusable Workflow - Terragrunt Drift Detection'
+
+on:
+  workflow_call:
+    inputs:
+      stack_path:
+        description: 'Path to the stack in the caller repo (e.g., apiary/acme/usw2)'
+        required: true
+        type: string
+      overlay_ref:
+        description: 'Tag/SHA of this repo to checkout for overlay (optional)'
+        required: false
+        type: string
+        default: 'main'
+      tg_args:
+        description: 'Additional Terragrunt arguments (optional)'
+        required: false
+        type: string
+        default: ''
+      notification_webhook:
+        description: 'Webhook URL for drift notifications (optional)'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      GH_APP_ID:
+        description: 'GitHub App ID for authentication'
+        required: true
+      GH_APP_PRIVATE_KEY:
+        description: 'GitHub App private key'
+        required: true
+      AWS_OIDC_ROLE:
+        description: 'AWS OIDC role ARN for authentication'
+        required: false
+      NOTIFICATION_WEBHOOK_SECRET:
+        description: 'Secret for notification webhook authentication'
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+  issues: write
+
+concurrency:
+  group: tg-drift-${{ inputs.stack_path }}
+  cancel-in-progress: true
+
+jobs:
+  drift_detection:
+    name: 'Terragrunt Drift Detection'
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1: Checkout the caller repository
+      - name: Checkout caller repository
+        uses: actions/checkout@v4
+        with:
+          path: stack
+      
+      # Step 2: Generate GitHub App token
+      - name: Generate GitHub App token
+        id: app_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: honeyhiveai
+          repositories: 'honeyhive-terraform,tf-module-aws-iam,tf-module-aws-vpc,tf-module-aws-secrets-manager,tf-module-helm-argocd,tf-module-helm-karpenter,tf-module-helm-eso'
+      
+      # Step 3: Checkout catalog repository for overlays
+      - name: Checkout catalog repository
+        uses: actions/checkout@v4
+        with:
+          repository: honeyhiveai/honeyhive-workflows
+          ref: ${{ inputs.overlay_ref }}
+          path: _catalog
+      
+      # Step 4: Setup Terraform and Terragrunt
+      - name: Setup Terragrunt
+        uses: ./_catalog/actions/setup-terragrunt
+        with:
+          token: ${{ steps.app_token.outputs.token }}
+      
+      # Step 5: Configure git authentication
+      - name: Configure git authentication
+        uses: ./_catalog/actions/git-auth-github-app
+        with:
+          token: ${{ steps.app_token.outputs.token }}
+      
+      # Step 6: Configure AWS credentials
+      - name: Configure AWS credentials
+        if: secrets.AWS_OIDC_ROLE != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          aws-region: us-west-2
+          role-duration-seconds: 3600
+      
+      # Step 7: Initialize summary
+      - name: Initialize drift summary
+        run: |
+          echo "## 🔍 Drift Detection" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Stack:** \`${{ inputs.stack_path }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+      
+      # Step 8: Terragrunt init
+      - name: Terragrunt init
+        uses: gruntwork-io/terragrunt-action@v3
+        with:
+          tg_version: '0.66.9'
+          tg_dir: stack/${{ inputs.stack_path }}
+          tg_command: 'run-all init --upgrade'
+          tg_add_approve: '0'
+      
+      # Step 9: Refresh state
+      - name: Refresh state
+        uses: gruntwork-io/terragrunt-action@v3
+        with:
+          tg_version: '0.66.9'
+          tg_dir: stack/${{ inputs.stack_path }}
+          tg_command: 'run-all refresh'
+          tg_add_approve: '1'
+      
+      # Step 10: Detect drift
+      - name: Detect drift
+        id: drift
+        uses: gruntwork-io/terragrunt-action@v3
+        with:
+          tg_version: '0.66.9'
+          tg_dir: stack/${{ inputs.stack_path }}
+          tg_command: 'run-all plan -detailed-exitcode ${{ inputs.tg_args }}'
+          tg_add_approve: '0'
+        continue-on-error: true
+      
+      # Step 11: Interpret drift results
+      - name: Interpret drift results
+        id: interpret
+        run: |
+          EXIT_CODE="${{ steps.drift.outputs.tg_action_exit_code }}"
+          
+          # Terragrunt exit codes:
+          # 0 = No changes (no drift)
+          # 1 = Error
+          # 2 = Changes detected (drift found)
+          
+          if [[ "$EXIT_CODE" == "0" ]]; then
+            echo "drift_detected=false" >> $GITHUB_OUTPUT
+            echo "drift_status=clean" >> $GITHUB_OUTPUT
+            echo "### ✅ No Drift Detected" >> $GITHUB_STEP_SUMMARY
+            echo "Infrastructure matches the desired state." >> $GITHUB_STEP_SUMMARY
+          elif [[ "$EXIT_CODE" == "2" ]]; then
+            echo "drift_detected=true" >> $GITHUB_OUTPUT
+            echo "drift_status=drift" >> $GITHUB_OUTPUT
+            echo "### ⚠️ Drift Detected!" >> $GITHUB_STEP_SUMMARY
+            echo "Infrastructure has drifted from the desired state." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "drift_detected=error" >> $GITHUB_OUTPUT
+            echo "drift_status=error" >> $GITHUB_OUTPUT
+            echo "### ❌ Error Detecting Drift" >> $GITHUB_STEP_SUMMARY
+            echo "An error occurred while checking for drift." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+      
+      # Step 12: Create or update issue for drift
+      - name: Create drift issue
+        if: steps.interpret.outputs.drift_detected == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = `[Drift Detected] Stack: ${{ inputs.stack_path }}`;
+            const body = `## 🚨 Infrastructure Drift Detected
+            
+            **Stack:** \`${{ inputs.stack_path }}\`
+            **Detection Time:** ${new Date().toISOString()}
+            **Workflow Run:** [#${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            
+            ### Action Required
+            
+            Infrastructure drift has been detected in the stack. Please review the changes and either:
+            
+            1. **Accept the drift** - Update the Terraform configuration to match the current state
+            2. **Correct the drift** - Run \`terragrunt apply\` to restore the desired state
+            
+            ### Drift Summary
+            
+            View the full drift analysis in the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+            
+            ---
+            *This issue was automatically created by the drift detection workflow.*
+            `;
+            
+            // Search for existing open issues
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'drift-detection',
+              per_page: 100
+            });
+            
+            const existingIssue = issues.data.find(issue => 
+              issue.title.includes(`${{ inputs.stack_path }}`)
+            );
+            
+            if (existingIssue) {
+              // Update existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `## 🔄 Drift Still Present\n\n${body}`
+              });
+              console.log(`Updated existing issue #${existingIssue.number}`);
+            } else {
+              // Create new issue
+              const issue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['drift-detection', 'infrastructure']
+              });
+              console.log(`Created new issue #${issue.data.number}`);
+            }
+      
+      # Step 13: Send webhook notification
+      - name: Send webhook notification
+        if: inputs.notification_webhook != '' && (steps.interpret.outputs.drift_detected == 'true' || steps.interpret.outputs.drift_status == 'error')
+        run: |
+          WEBHOOK_URL="${{ inputs.notification_webhook }}"
+          DRIFT_STATUS="${{ steps.interpret.outputs.drift_status }}"
+          
+          # Prepare payload
+          if [[ "$DRIFT_STATUS" == "drift" ]]; then
+            TITLE="🚨 Drift Detected: ${{ inputs.stack_path }}"
+            COLOR="warning"
+            TEXT="Infrastructure drift has been detected in stack ${{ inputs.stack_path }}"
+          elif [[ "$DRIFT_STATUS" == "error" ]]; then
+            TITLE="❌ Drift Detection Error: ${{ inputs.stack_path }}"
+            COLOR="danger"
+            TEXT="Error occurred while checking for drift in stack ${{ inputs.stack_path }}"
+          else
+            TITLE="✅ No Drift: ${{ inputs.stack_path }}"
+            COLOR="good"
+            TEXT="No infrastructure drift detected in stack ${{ inputs.stack_path }}"
+          fi
+          
+          # Send webhook (generic JSON format, adapt as needed for Slack/Teams/etc)
+          curl -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -H "X-Webhook-Secret: ${{ secrets.NOTIFICATION_WEBHOOK_SECRET }}" \
+            -d "{
+              \"title\": \"$TITLE\",
+              \"text\": \"$TEXT\",
+              \"color\": \"$COLOR\",
+              \"stack\": \"${{ inputs.stack_path }}\",
+              \"status\": \"$DRIFT_STATUS\",
+              \"workflow_run\": \"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",
+              \"timestamp\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\"
+            }" || echo "::warning::Failed to send webhook notification"

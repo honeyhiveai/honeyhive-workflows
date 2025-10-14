@@ -1,152 +1,235 @@
-# HoneyHive Workflows
+# Honeyhive Workflows
 
-Reusable GitHub Actions workflows for HoneyHive infrastructure deployments.
+> **Federated catalog of reusable GitHub Actions workflows and Terragrunt overlays for BYOC deployments**
 
-## Overview
+This repository provides the public/internal catalog for Honeyhive's federated infrastructure deployment model. It contains reusable GitHub Actions workflows for Terragrunt operations and cloud-specific Terragrunt overlays that enforce consistent patterns across tenant deployments.
 
-This repository contains centralized, versioned, reusable workflows that can be called from deployment repositories (like `apiary`) to manage infrastructure using Terragrunt and the `honeyhive-terraform` repository.
+## 🏗️ Architecture Overview
 
-## Workflows
+This catalog is part of a three-repository architecture:
 
-### Terragrunt Deploy
+1. **honeyhive-workflows** (this repo) - Reusable workflows and overlays
+2. **honeyhive-terraform** - Terraform root modules only
+3. **apiary** - Private tenant configurations and stacks
 
-**File**: `.github/workflows/terragrunt-deploy.yml`
+## 📁 Repository Structure
 
-Reusable workflow for deploying infrastructure via Terragrunt.
+```
+honeyhive-workflows/
+├─ actions/                    # Composite GitHub Actions
+│  ├─ setup-terragrunt/        # Install Terraform & Terragrunt
+│  └─ git-auth-github-app/     # Configure git auth with GitHub App
+├─ overlays/                   # Terragrunt overlays
+│  ├─ aws/root.hcl            # AWS provider & state configuration
+│  └─ azure/root.hcl          # Azure provider (stub)
+├─ .github/workflows/          # Reusable workflows
+│  ├─ rwf-tg-plan.yml         # Terragrunt plan workflow
+│  ├─ rwf-tg-apply.yml        # Terragrunt apply workflow  
+│  ├─ rwf-tg-destroy.yml      # Terragrunt destroy workflow
+│  └─ rwf-tg-drift.yml        # Drift detection workflow
+├─ examples/                   # Example configurations
+│  ├─ tenant-caller-*.yml     # Sample caller workflows
+│  ├─ tenant-terragrunt.hcl   # Sample Terragrunt config
+│  └─ tenant.yaml             # Sample tenant configuration
+└─ docs/                       # Documentation
+   └─ WORKFLOWS.md            # Detailed workflow documentation
+```
 
-**Usage**:
+## 🚀 Quick Start
+
+### For Tenant Onboarding
+
+1. **Create your stack** in the apiary repository:
+   ```
+   apiary/{org}/{sregion}/
+   ├─ tenant.yaml      # Your configuration
+   └─ terragrunt.hcl   # Points to catalog overlay & Terraform module
+   ```
+
+2. **Set up caller workflows** in your apiary repository:
+   - Copy examples from `examples/tenant-caller-*.yml`
+   - Configure GitHub secrets (App ID, private key, AWS OIDC role)
+   - Customize for your organization
+
+3. **Configure authentication**:
+   - GitHub App for private module access
+   - AWS OIDC role for cloud resource provisioning
+
+## 🔧 Composite Actions
+
+### setup-terragrunt
+
+Installs Terraform and Terragrunt with specified versions using [autero1/action-terraform](https://github.com/autero1/action-terraform) and [autero1/action-terragrunt](https://github.com/autero1/action-terragrunt).
 
 ```yaml
-jobs:
-  deploy:
-    uses: honeyhiveai/honeyhive-workflows/.github/workflows/terragrunt-deploy.yml@v1.0.0
-    with:
-      environment: production-usw2
-      layer: all
-      action: plan
-      terraform_ref: v1.0.0
-    secrets:
-      GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
-      TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
-      SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+- uses: honeyhiveai/honeyhive-workflows/actions/setup-terragrunt@v1
+  with:
+    terraform_version: '1.9.8'    # Optional, defaults to 1.9.8
+    terragrunt_version: '0.66.9'  # Optional, defaults to 0.66.9
+    token: ${{ steps.app_token.outputs.token }}  # Optional, for private repos
 ```
 
-**Inputs**:
-- `environment` - Environment config name (e.g., production-usw2)
-- `layer` - Layer to deploy (all, substrate, hosting, application)
-- `action` - Terraform action (plan, apply, destroy)
-- `terraform_repo` - Terraform repo (default: honeyhiveai/honeyhive-terraform)
-- `terraform_ref` - Git ref to use (tag/branch/SHA)
-- `config_path` - Path to config files (default: configs)
-- `terragrunt_version` - Terragrunt version (default: 0.55.0)
-- `terraform_version` - Terraform version (default: 1.9.0)
-- `aws_region` - AWS region (default: us-west-2)
+### git-auth-github-app
 
-**Inputs** (from calling workflow):
-- Can pass `aws_oidc_role` and `gh_app_id` as inputs
-- Or use repository variables: `vars.AWS_OIDC_ROLE` and `vars.GH_APP_ID`
-
-**Secrets**:
-- `GH_APP_PRIVATE_KEY` - GitHub App private key in PEM format (required)
-- `TWINGATE_API_TOKEN` - Twingate API token (optional)
-- `SLACK_TOKEN` - Slack token (optional)
-
-**Variables** (from calling repository):
-- `AWS_OIDC_ROLE` - AWS IAM role ARN in orchestration account
-  - Example: `arn:aws:iam::839515361289:role/HoneyhiveFederatedProvisioner`
-  - Kept as variable (not secret) for troubleshooting visibility
-- `GH_APP_ID` - GitHub App ID
-  - Example: `2088377`
-  - Kept as variable for quick identification during incidents
-
-**Note**: AWS account ID is extracted from the YAML configuration file. Each environment config specifies its target account.
-
-## Versioning
-
-This repository uses semantic versioning with automated releases.
-
-### Pull Request Process
-
-1. Create a branch
-2. Make changes
-3. Open a PR with title including version tag:
-   - `#major` - Breaking changes to workflow interfaces
-   - `#minor` - New workflows or backward-compatible features
-   - `#patch` - Bug fixes
-   - `#none` - Documentation only
-
-4. After merge, version tag and release are created automatically
-
-### Referencing Workflows
-
-Always pin to specific versions in production:
+Configures git to use GitHub App token for HTTPS authentication using git credential helper.
 
 ```yaml
-# ✅ Good - pinned to version
-uses: honeyhiveai/honeyhive-workflows/.github/workflows/terragrunt-deploy.yml@v1.0.0
-
-# ⚠️ Caution - uses latest from main
-uses: honeyhiveai/honeyhive-workflows/.github/workflows/terragrunt-deploy.yml@main
+- uses: honeyhiveai/honeyhive-workflows/actions/git-auth-github-app@v1
+  with:
+    token: ${{ steps.app_token.outputs.token }}
 ```
 
-## Repository Structure
+## 🔄 Reusable Workflows
 
+All workflows follow a consistent contract:
+
+### Common Inputs
+- `stack_path` (required): Path to stack in caller repo
+- `overlay_ref` (optional): Version of this catalog to use
+- `tg_args` (optional): Additional Terragrunt arguments
+
+### Common Secrets
+- `GH_APP_ID`: GitHub App ID (required)
+- `GH_APP_PRIVATE_KEY`: GitHub App private key (required)
+- `AWS_OIDC_ROLE`: AWS role ARN for authentication (optional)
+
+### Workflow Details
+
+All workflows use [gruntwork-io/terragrunt-action](https://github.com/gruntwork-io/terragrunt-action) for Terragrunt execution with automatic PR commenting and output capture.
+
+| Workflow | Purpose | Key Features |
+|----------|---------|--------------|
+| `rwf-tg-plan.yml` | Generate Terragrunt plan | Format/validate/security checks, plan summary, PR comments |
+| `rwf-tg-apply.yml` | Apply infrastructure changes | Environment protection, auto-approve, PR comments |
+| `rwf-tg-destroy.yml` | Destroy infrastructure | Confirmation required, state backup, PR comments |
+| `rwf-tg-drift.yml` | Detect configuration drift | Issue creation, webhook notifications |
+
+## 📦 Overlays
+
+### AWS Overlay (`overlays/aws/root.hcl`)
+
+Provides:
+- AWS provider configuration with default tags
+- S3 backend state configuration
+- Region validation
+- Common locals from tenant.yaml
+
+### Azure Overlay (`overlays/azure/root.hcl`)
+
+Stub implementation for future Azure support.
+
+## 🏷️ Tagging Strategy
+
+All resources are tagged with:
+- `Owner`: honeyhive
+- `Organization`: From tenant config
+- `Environment`: dev/test/stage/prod
+- `Region`: AWS region
+- `Deployment`: Unique deployment ID
+- `Service`: Service being deployed
+- `Layer`: substrate/hosting/application
+- `ManagedBy`: Terraform
+- `Repository`: Source repository URL
+
+## 🔐 Security
+
+### GitHub App Authentication
+
+Required for accessing private Terraform modules. Token is generated automatically using [actions/create-github-app-token](https://github.com/actions/create-github-app-token).
+
+Required secrets:
+- `GH_APP_ID`: GitHub App ID
+- `GH_APP_PRIVATE_KEY`: Private key (PEM format)
+
+### AWS OIDC Authentication
+
+Federated authentication without long-lived credentials:
+- Deploy `HoneyhiveProvisioner` role in tenant account
+- Trust central `HoneyhiveFederatedProvisioner` role
+- Pass role ARN as `AWS_OIDC_ROLE` secret
+
+## 📊 State Management
+
+### Default State Configuration
+- **Bucket**: `honeyhive-federated-{sregion}-state`
+- **Key**: `{org}/{env}/{sregion}/{deployment}/{layer}/{service}/tfstate.json`
+- **Region**: One bucket per region
+- **Locking**: DynamoDB table
+- **Encryption**: Enabled by default
+
+### BYOC State Override
+
+Tenants can override the state bucket in their `tenant.yaml`:
+```yaml
+state_bucket: my-custom-terraform-state-bucket
 ```
-.
-├── .github/workflows/
-│   ├── pull_request.yml          # PR validation
-│   ├── tag_and_release.yml       # Automated versioning
-│   └── terragrunt-deploy.yml     # Reusable deployment workflow
-└── README.md
+
+## 🔄 Versioning
+
+This catalog follows semantic versioning:
+- **Major**: Breaking changes to workflow contracts
+- **Minor**: New features, backwards compatible
+- **Patch**: Bug fixes
+
+Pin to specific versions in your caller workflows:
+```yaml
+uses: honeyhiveai/honeyhive-workflows/.github/workflows/rwf-tg-plan.yml@v1.2.3
 ```
 
-## Contributing
+## 📈 Workflow Pipeline Order
 
-### Adding a New Workflow
+Plan workflow execution order:
+1. **Parallel validation**: Format check | Configuration validate | Security scan (Checkov)
+2. **Fail fast**: Exit if validation fails
+3. **Sequential**: Terragrunt init → Terragrunt plan
+4. **Output**: Job summary with status indicators and PR comments
 
-1. Create workflow file in `.github/workflows/`
-2. Use `workflow_call` trigger for reusable workflows
-3. Document all inputs and secrets
-4. Test in a deployment repo (like apiary)
-5. Open PR with `#minor` tag
+## 🚦 Concurrency Control
 
-### Modifying Existing Workflows
+Workflows use concurrency groups to prevent overlapping operations:
+```yaml
+concurrency:
+  group: tg-${{ inputs.stack_path }}
+  cancel-in-progress: false  # Don't cancel running applies
+```
 
-1. For breaking changes, use `#major` tag
-2. For backward-compatible changes, use `#minor` tag
-3. For bug fixes, use `#patch` tag
-4. Update README with changes
+## 📝 Examples
 
-## Best Practices
+See the `examples/` directory for:
+- Complete tenant.yaml configuration
+- Terragrunt.hcl with overlay inclusion
+- Caller workflows for plan/apply/destroy/drift
 
-### For Workflow Authors
+## 🤝 Contributing
 
-- ✅ Use clear input/secret names
-- ✅ Provide sensible defaults
-- ✅ Document all parameters
-- ✅ Add validation steps
-- ✅ Include summary outputs
-- ✅ Handle errors gracefully
+1. Create feature branch from `main`
+2. Make changes and test thoroughly
+3. Update documentation and examples
+4. Submit PR with clear description
+5. Tag new version after merge
 
-### For Workflow Consumers
+## 📚 Additional Resources
 
-- ✅ Always pin to specific versions
-- ✅ Use GitHub environments for approvals
-- ✅ Store secrets in GitHub Secrets
-- ✅ Test in non-prod first
-- ✅ Monitor workflow runs
+- [Detailed Workflow Documentation](docs/WORKFLOWS.md)
+- [Honeyhive Terraform Modules](https://github.com/honeyhiveai/honeyhive-terraform)
+- [Terragrunt Documentation](https://terragrunt.gruntwork.io/)
 
-## Related Repositories
+## 🐛 Troubleshooting
 
-- [honeyhive-terraform](https://github.com/honeyhiveai/honeyhive-terraform) - Infrastructure as code
-- [apiary](https://github.com/honeyhiveai/apiary) - Internal deployments (private)
+### Common Issues
 
-## Support
+1. **Module authentication fails**
+   - Verify GitHub App credentials
+   - Check token generation in workflow
 
-- **Issues**: https://github.com/honeyhiveai/honeyhive-workflows/issues
-- **Discussions**: https://github.com/honeyhiveai/honeyhive-workflows/discussions
+2. **State access denied**
+   - Verify AWS OIDC role configuration
+   - Check bucket permissions
 
-## License
+3. **Overlay not found**
+   - Ensure `overlay_ref` is specified
+   - Check catalog checkout step
 
-Proprietary - HoneyHive, Inc.
+## 📄 License
 
+[Internal Use Only - Honeyhive Proprietary]
