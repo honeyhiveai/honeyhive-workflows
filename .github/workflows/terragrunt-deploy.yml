@@ -152,7 +152,7 @@ jobs:
           token: ${{ steps.app_token.outputs.token }}
       
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses:  autero1/action-terragrunt@v3
         with:
           terraform_version: ${{ inputs.terraform_version }}
       
