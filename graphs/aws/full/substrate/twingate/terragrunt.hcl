@@ -1,6 +1,6 @@
 # Twingate VPN - Optional secure access
 # Depends on: VPC (for networking)
-# Optional: Deployed only if features.twingate = true
+# Optional: Deployed based on deployment_type and features.twingate
 
 include "root" {
   path = "${get_repo_root()}/overlays/aws/root.hcl"
@@ -10,8 +10,10 @@ locals {
   cfg = yamldecode(file(get_env("TENANT_CONFIG_PATH")))
 }
 
-# Skip if twingate feature is disabled
-skip = try(!local.cfg.features.twingate, false)
+# Skip if:
+# 1. Not included in deployment type's substrate_services list, OR
+# 2. features.twingate explicitly disabled
+skip = !(contains(include.root.locals.current_deployment.substrate_services, "twingate") && try(local.cfg.features.twingate, true))
 
 dependency "vpc" {
   config_path = "${get_repo_root()}/graphs/aws/full/substrate/vpc"

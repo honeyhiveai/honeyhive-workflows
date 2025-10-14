@@ -16,11 +16,16 @@ region: us-west-2
 # Deployment identifier (unique within org/env/region)
 deployment: dataplane-acme
 
+# Deployment type (full_stack, control_plane, data_plane, customer)
+deployment_type: full_stack
+
 # Infrastructure layer (substrate, hosting, application)
+# Note: Set by graph nodes automatically based on service
 layer: hosting
 
 # Service being deployed (vpc, eks, s3, database, etc.)
-service: eks
+# Note: Set by graph nodes automatically
+service: cluster
 
 # AWS account ID (optional, for validation)
 account_id: "123456789012"

@@ -2,17 +2,53 @@
 # This overlay provides common configuration for all AWS-based Terragrunt stacks
 
 locals {
-  # Extract configuration from tenant.yaml
-  cfg = yamldecode(file("${get_terragrunt_dir()}/tenant.yaml"))
+  # Extract configuration from tenant.yaml (via env var or local file)
+  cfg = yamldecode(file(try(get_env("TENANT_CONFIG_PATH"), "${get_terragrunt_dir()}/tenant.yaml")))
   
   # Core variables from tenant configuration
-  org        = local.cfg.org
-  env        = local.cfg.env
-  sregion    = local.cfg.sregion
-  region     = local.cfg.region
-  deployment = local.cfg.deployment
-  layer      = local.cfg.layer
-  service    = local.cfg.service
+  org             = local.cfg.org
+  env             = local.cfg.env
+  sregion         = local.cfg.sregion
+  region          = local.cfg.region
+  deployment      = local.cfg.deployment
+  layer           = local.cfg.layer
+  service         = local.cfg.service
+  deployment_type = try(local.cfg.deployment_type, "full_stack")
+  
+  # DEPLOYMENT TYPE CONFIGURATION MATRIX
+  # Defines which services are included in each deployment type
+  deployment_config = {
+    "full_stack" = {
+      substrate_services  = ["vpc", "dns", "twingate"]
+      hosting_services    = ["cluster", "karpenter", "pod_identities", "addons"]
+      application_services = ["database", "s3"]
+      description = "Complete platform deployment (control plane + data plane + ops)"
+    }
+    
+    "control_plane" = {
+      substrate_services  = ["vpc", "dns"]
+      hosting_services    = ["cluster", "pod_identities", "addons"]
+      application_services = []
+      description = "Control plane only (API, dashboard, GitOps)"
+    }
+    
+    "data_plane" = {
+      substrate_services  = ["vpc", "dns"]
+      hosting_services    = ["cluster", "karpenter", "addons"]
+      application_services = []
+      description = "Data plane only (compute workloads, minimal features)"
+    }
+    
+    "customer" = {
+      substrate_services  = ["vpc", "dns"]
+      hosting_services    = ["cluster", "addons"]
+      application_services = []
+      description = "LEGACY: Basic customer deployment"
+    }
+  }
+  
+  # Helper: Check if a service should be deployed based on deployment type
+  current_deployment = try(local.deployment_config[local.deployment_type], local.deployment_config["full_stack"])
   
   # Common tags to apply to all resources
   common_tags = merge(
