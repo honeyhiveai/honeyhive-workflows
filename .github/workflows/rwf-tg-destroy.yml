@@ -4,11 +4,16 @@ on:
   workflow_call:
     inputs:
       stack_path:
-        description: 'Path to the stack in the caller repo (e.g., apiary/acme/usw2)'
+        description: 'Path to the tenant stack in the caller repo (e.g., acme/usw2)'
         required: true
         type: string
+      graph:
+        description: 'Graph to use from catalog (e.g., aws/full)'
+        required: false
+        type: string
+        default: 'aws/full'
       overlay_ref:
-        description: 'Tag/SHA of this repo to checkout for overlay (optional)'
+        description: 'Tag/SHA of this repo to checkout for overlay and graph (optional)'
         required: false
         type: string
         default: 'main'
@@ -57,11 +62,11 @@ jobs:
           fi
           echo "⚠️ Destruction confirmed for stack: ${{ inputs.stack_path }}"
       
-      # Step 2: Checkout the caller repository
+      # Step 2: Checkout the caller repository (apiary)
       - name: Checkout caller repository
         uses: actions/checkout@v4
         with:
-          path: stack
+          path: apiary
       
       # Step 3: Generate GitHub App token
       - name: Generate GitHub App token
@@ -73,7 +78,7 @@ jobs:
           owner: honeyhiveai
           repositories: 'honeyhive-terraform,tf-module-aws-iam,tf-module-aws-vpc,tf-module-aws-secrets-manager,tf-module-helm-argocd,tf-module-helm-karpenter,tf-module-helm-eso'
       
-      # Step 4: Checkout catalog repository for overlays
+      # Step 4: Checkout catalog repository for overlays and graphs
       - name: Checkout catalog repository
         uses: actions/checkout@v4
         with:
@@ -102,38 +107,43 @@ jobs:
           aws-region: us-west-2
           role-duration-seconds: 3600
       
-      # Step 8: Initialize summary
-      - name: Initialize destroy summary
+      # Step 8: Set tenant configuration path
+      - name: Set tenant configuration
+        id: tenant_config
         run: |
+          TENANT_CONFIG_PATH="${{ github.workspace }}/apiary/${{ inputs.stack_path }}/tenant.yaml"
+          
+          if [[ ! -f "$TENANT_CONFIG_PATH" ]]; then
+            echo "::error::Tenant configuration not found: $TENANT_CONFIG_PATH"
+            exit 1
+          fi
+          
+          echo "TENANT_CONFIG_PATH=$TENANT_CONFIG_PATH" >> $GITHUB_ENV
+          echo "TG_GRAPH_DIR=${{ github.workspace }}/_catalog/graphs/${{ inputs.graph }}" >> $GITHUB_ENV
+          
           echo "## 🔥 Terragrunt Destroy" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Stack:** \`${{ inputs.stack_path }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "**Graph:** \`${{ inputs.graph }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Config:** \`$TENANT_CONFIG_PATH\`" >> $GITHUB_STEP_SUMMARY
           echo "**Destroyed by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "⚠️ **WARNING:** This will destroy all infrastructure!" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **WARNING:** This will destroy all infrastructure across all layers!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
       
       # Step 9: Backup current state
       - name: Backup current state
-        working-directory: stack/${{ inputs.stack_path }}
+        working-directory: ${{ env.TG_GRAPH_DIR }}
+        env:
+          TENANT_CONFIG_PATH: ${{ env.TENANT_CONFIG_PATH }}
         run: |
           echo "### 💾 State Backup" >> $GITHUB_STEP_SUMMARY
           
           # Initialize first
-          terragrunt run-all init
+          terragrunt run-all init --terragrunt-include-external-dependencies --terragrunt-non-interactive
           
-          # Pull and backup current state
-          if terragrunt state pull > state-backup.json 2>/dev/null; then
-            echo "✅ State backed up successfully" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Resources to be destroyed:**" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            terragrunt state list 2>/dev/null | head -20 >> $GITHUB_STEP_SUMMARY || echo "No resources found"
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⚠️ No existing state found or unable to backup" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "✅ State initialized" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
       
       # Step 10: Plan destruction
@@ -142,21 +152,27 @@ jobs:
         uses: gruntwork-io/terragrunt-action@v3
         with:
           tg_version: '0.66.9'
-          tg_dir: stack/${{ inputs.stack_path }}
-          tg_command: 'run-all plan -destroy ${{ inputs.tg_args }}'
+          tg_dir: ${{ env.TG_GRAPH_DIR }}
+          tg_command: 'run-all plan -destroy --terragrunt-include-external-dependencies ${{ inputs.tg_args }}'
           tg_add_approve: '0'
+        env:
+          TENANT_CONFIG_PATH: ${{ env.TENANT_CONFIG_PATH }}
+          TF_IN_AUTOMATION: 'true'
       
-      # Step 11: Execute destroy
+      # Step 11: Execute destroy (reverse dependency order)
       - name: Terragrunt destroy
         id: destroy
         uses: gruntwork-io/terragrunt-action@v3
         with:
           tg_version: '0.66.9'
-          tg_dir: stack/${{ inputs.stack_path }}
-          tg_command: 'run-all destroy ${{ inputs.tg_args }}'
+          tg_dir: ${{ env.TG_GRAPH_DIR }}
+          tg_command: 'run-all destroy --terragrunt-include-external-dependencies ${{ inputs.tg_args }}'
           tg_add_approve: '1'
           tg_comment: '1'
           github_token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          TENANT_CONFIG_PATH: ${{ env.TENANT_CONFIG_PATH }}
+          TF_IN_AUTOMATION: 'true'
       
       # Step 12: Destroy summary
       - name: Destroy summary
@@ -165,6 +181,11 @@ jobs:
           echo "### 📊 Destroy Results" >> $GITHUB_STEP_SUMMARY
           if [[ "${{ steps.destroy.outcome }}" == "success" ]]; then
             echo "✅ Destroy completed successfully" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "All layers destroyed in reverse dependency order:" >> $GITHUB_STEP_SUMMARY
+            echo "1. Application (Database, S3)" >> $GITHUB_STEP_SUMMARY
+            echo "2. Hosting (Addons, Pod Identities, Karpenter, Cluster)" >> $GITHUB_STEP_SUMMARY
+            echo "3. Substrate (Twingate, DNS, VPC)" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ Destroy failed" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
@@ -172,29 +193,3 @@ jobs:
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "[View full destroy output](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
-      
-      # Step 13: Verify destruction
-      - name: Verify destruction
-        if: success()
-        working-directory: stack/${{ inputs.stack_path }}
-        run: |
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🔍 Post-Destruction Verification" >> $GITHUB_STEP_SUMMARY
-          
-          # Check if any resources remain
-          if terragrunt state list 2>/dev/null | grep -q .; then
-            REMAINING=$(terragrunt state list | wc -l)
-            echo "⚠️ Warning: $REMAINING resources still exist in state" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "✅ All resources successfully destroyed" >> $GITHUB_STEP_SUMMARY
-          fi
-      
-      # Step 14: Upload artifacts
-      - name: Upload destruction artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: terragrunt-destroy-${{ inputs.stack_path }}-${{ github.run_id }}
-          path: |
-            stack/${{ inputs.stack_path }}/state-backup.json
-          retention-days: 90  # Keep destruction records longer

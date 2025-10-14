@@ -52,10 +52,12 @@ jobs:
     
     steps:
       # Call the reusable drift detection workflow
+      # Checks all layers in the dependency graph
       - name: Check for drift
         uses: honeyhiveai/honeyhive-workflows/.github/workflows/rwf-tg-drift.yml@v1
         with:
           stack_path: ${{ matrix.stack }}
+          graph: aws/full  # Use the full environment graph
           overlay_ref: v1  # Pin to a specific version of the catalog
           notification_webhook: ${{ secrets.DRIFT_NOTIFICATION_WEBHOOK }}
         secrets:

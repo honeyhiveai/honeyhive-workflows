@@ -4,11 +4,16 @@ on:
   workflow_call:
     inputs:
       stack_path:
-        description: 'Path to the stack in the caller repo (e.g., apiary/acme/usw2)'
+        description: 'Path to the tenant stack in the caller repo (e.g., acme/usw2)'
         required: true
         type: string
+      graph:
+        description: 'Graph to use from catalog (e.g., aws/full)'
+        required: false
+        type: string
+        default: 'aws/full'
       overlay_ref:
-        description: 'Tag/SHA of this repo to checkout for overlay (optional)'
+        description: 'Tag/SHA of this repo to checkout for overlay and graph (optional)'
         required: false
         type: string
         default: 'main'
@@ -44,11 +49,11 @@ jobs:
     environment: production  # Requires approval
     
     steps:
-      # Step 1: Checkout the caller repository
+      # Step 1: Checkout the caller repository (apiary)
       - name: Checkout caller repository
         uses: actions/checkout@v4
         with:
-          path: stack
+          path: apiary
       
       # Step 2: Generate GitHub App token
       - name: Generate GitHub App token
@@ -60,7 +65,7 @@ jobs:
           owner: honeyhiveai
           repositories: 'honeyhive-terraform,tf-module-aws-iam,tf-module-aws-vpc,tf-module-aws-secrets-manager,tf-module-helm-argocd,tf-module-helm-karpenter,tf-module-helm-eso'
       
-      # Step 3: Checkout catalog repository for overlays
+      # Step 3: Checkout catalog repository for overlays and graphs
       - name: Checkout catalog repository
         uses: actions/checkout@v4
         with:
@@ -89,14 +94,27 @@ jobs:
           aws-region: us-west-2
           role-duration-seconds: 3600
       
-      # Step 7: Initialize summary
-      - name: Initialize apply summary
+      # Step 7: Set tenant configuration path
+      - name: Set tenant configuration
+        id: tenant_config
         run: |
+          TENANT_CONFIG_PATH="${{ github.workspace }}/apiary/${{ inputs.stack_path }}/tenant.yaml"
+          
+          if [[ ! -f "$TENANT_CONFIG_PATH" ]]; then
+            echo "::error::Tenant configuration not found: $TENANT_CONFIG_PATH"
+            exit 1
+          fi
+          
+          echo "TENANT_CONFIG_PATH=$TENANT_CONFIG_PATH" >> $GITHUB_ENV
+          echo "TG_GRAPH_DIR=${{ github.workspace }}/_catalog/graphs/${{ inputs.graph }}" >> $GITHUB_ENV
+          
           echo "## 🚀 Terragrunt Apply" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Stack:** \`${{ inputs.stack_path }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "**Graph:** \`${{ inputs.graph }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Config:** \`$TENANT_CONFIG_PATH\`" >> $GITHUB_STEP_SUMMARY
           echo "**Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
       
       # Step 8: Pre-apply validation
@@ -104,30 +122,39 @@ jobs:
         uses: gruntwork-io/terragrunt-action@v3
         with:
           tg_version: '0.66.9'
-          tg_dir: stack/${{ inputs.stack_path }}
-          tg_command: 'validate'
+          tg_dir: ${{ env.TG_GRAPH_DIR }}
+          tg_command: 'run-all validate'
           tg_add_approve: '0'
+        env:
+          TENANT_CONFIG_PATH: ${{ env.TENANT_CONFIG_PATH }}
+          TF_IN_AUTOMATION: 'true'
       
-      # Step 9: Terragrunt init
+      # Step 9: Terragrunt init (with external dependencies)
       - name: Terragrunt init
         uses: gruntwork-io/terragrunt-action@v3
         with:
           tg_version: '0.66.9'
-          tg_dir: stack/${{ inputs.stack_path }}
-          tg_command: 'run-all init --upgrade'
+          tg_dir: ${{ env.TG_GRAPH_DIR }}
+          tg_command: 'run-all init --terragrunt-include-external-dependencies'
           tg_add_approve: '0'
+        env:
+          TENANT_CONFIG_PATH: ${{ env.TENANT_CONFIG_PATH }}
+          TF_IN_AUTOMATION: 'true'
       
-      # Step 10: Terragrunt apply
+      # Step 10: Terragrunt apply (DAG-aware, auto-approve)
       - name: Terragrunt apply
         id: apply
         uses: gruntwork-io/terragrunt-action@v3
         with:
           tg_version: '0.66.9'
-          tg_dir: stack/${{ inputs.stack_path }}
-          tg_command: 'run-all apply ${{ inputs.tg_args }}'
+          tg_dir: ${{ env.TG_GRAPH_DIR }}
+          tg_command: 'run-all apply --terragrunt-include-external-dependencies ${{ inputs.tg_args }}'
           tg_add_approve: '1'
           tg_comment: '1'
           github_token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          TENANT_CONFIG_PATH: ${{ env.TENANT_CONFIG_PATH }}
+          TF_IN_AUTOMATION: 'true'
       
       # Step 11: Apply summary
       - name: Apply summary
@@ -136,6 +163,11 @@ jobs:
           echo "### 📊 Apply Results" >> $GITHUB_STEP_SUMMARY
           if [[ "${{ steps.apply.outcome }}" == "success" ]]; then
             echo "✅ Apply completed successfully" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "All layers deployed in dependency order:" >> $GITHUB_STEP_SUMMARY
+            echo "1. Substrate (VPC, DNS, Twingate)" >> $GITHUB_STEP_SUMMARY
+            echo "2. Hosting (Cluster, Karpenter, Pod Identities, Addons)" >> $GITHUB_STEP_SUMMARY
+            echo "3. Application (Database, S3)" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ Apply failed" >> $GITHUB_STEP_SUMMARY
           fi
@@ -145,15 +177,24 @@ jobs:
       # Step 12: Post-apply validation
       - name: Post-apply validation
         if: success()
-        working-directory: stack/${{ inputs.stack_path }}
+        working-directory: ${{ env.TG_GRAPH_DIR }}
+        env:
+          TENANT_CONFIG_PATH: ${{ env.TENANT_CONFIG_PATH }}
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔍 Post-Apply Validation" >> $GITHUB_STEP_SUMMARY
           
-          # Verify state exists
-          if terragrunt state list > /dev/null 2>&1; then
-            RESOURCE_COUNT=$(terragrunt state list | wc -l)
-            echo "✅ State verified: $RESOURCE_COUNT resources tracked" >> $GITHUB_STEP_SUMMARY
+          # Count resources across all states
+          TOTAL_RESOURCES=0
+          for state_dir in $(find . -name ".terragrunt-cache" -type d); do
+            if [[ -f "$state_dir/terraform.tfstate" ]]; then
+              COUNT=$(terragrunt state list -state="$state_dir/terraform.tfstate" 2>/dev/null | wc -l || echo 0)
+              TOTAL_RESOURCES=$((TOTAL_RESOURCES + COUNT))
+            fi
+          done
+          
+          if [[ $TOTAL_RESOURCES -gt 0 ]]; then
+            echo "✅ State verified: $TOTAL_RESOURCES total resources tracked across all layers" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ Unable to verify state" >> $GITHUB_STEP_SUMMARY
           fi

@@ -54,10 +54,12 @@ jobs:
     
     steps:
       # Call the reusable plan workflow
+      # The workflow uses the centralized dependency graph from the catalog
       - name: Plan Terragrunt stack
         uses: honeyhiveai/honeyhive-workflows/.github/workflows/rwf-tg-plan.yml@v1
         with:
           stack_path: ${{ matrix.stack }}
+          graph: aws/full  # Use the full environment graph
           overlay_ref: v1  # Pin to a specific version of the catalog
         secrets:
           GH_APP_ID: ${{ secrets.GH_APP_ID }}

@@ -22,6 +22,12 @@ honeyhive-workflows/
 ├─ overlays/                   # Terragrunt overlays
 │  ├─ aws/root.hcl            # AWS provider & state configuration
 │  └─ azure/root.hcl          # Azure provider (stub)
+├─ graphs/                     # Pre-built dependency graphs (DAGs)
+│  └─ aws/
+│      └─ full/                # Full environment graph
+│          ├─ substrate/       # Foundation layer (VPC, DNS, Twingate)
+│          ├─ hosting/         # Platform layer (Cluster, Karpenter, Addons)
+│          └─ application/     # App layer (Database, S3)
 ├─ .github/workflows/          # Reusable workflows
 │  ├─ rwf-tg-plan.yml         # Terragrunt plan workflow
 │  ├─ rwf-tg-apply.yml        # Terragrunt apply workflow  
@@ -29,8 +35,8 @@ honeyhive-workflows/
 │  └─ rwf-tg-drift.yml        # Drift detection workflow
 ├─ examples/                   # Example configurations
 │  ├─ tenant-caller-*.yml     # Sample caller workflows
-│  ├─ tenant-terragrunt.hcl   # Sample Terragrunt config
-│  └─ tenant.yaml             # Sample tenant configuration
+│  ├─ tenant-terragrunt.hcl   # DEPRECATED - Tenants use YAML only
+│  └─ tenant.yaml             # Sample tenant configuration (YAML-only!)
 └─ docs/                       # Documentation
    └─ WORKFLOWS.md            # Detailed workflow documentation
 ```
@@ -39,21 +45,49 @@ honeyhive-workflows/
 
 ### For Tenant Onboarding
 
-1. **Create your stack** in the apiary repository:
+**Tenants only provide YAML configuration - zero Terragrunt files to manage!**
+
+1. **Create your tenant stack** in the apiary repository:
    ```
    apiary/{org}/{sregion}/
-   ├─ tenant.yaml      # Your configuration
-   └─ terragrunt.hcl   # Points to catalog overlay & Terraform module
+   └─ tenant.yaml      # Your configuration (that's it!)
    ```
 
-2. **Set up caller workflows** in your apiary repository:
-   - Copy examples from `examples/tenant-caller-*.yml`
+2. **Copy caller workflows** to apiary repository:
+   - Copy examples from `examples/tenant-caller-*.yml` to `.github/workflows/`
    - Configure GitHub secrets (App ID, private key, AWS OIDC role)
-   - Customize for your organization
+   - No need to customize - they auto-detect changed stacks
 
 3. **Configure authentication**:
    - GitHub App for private module access
    - AWS OIDC role for cloud resource provisioning
+
+4. **Push and deploy**:
+   - Open PR → automated plan runs
+   - Merge → automated apply runs
+   - Dependencies handled automatically by the graph!
+
+### Dependency Graph Management
+
+All Terragrunt dependency wiring is managed centrally in this catalog:
+
+```
+graphs/aws/full/           # Full environment dependency graph
+├── substrate/
+│   ├── vpc/               # First (no dependencies)
+│   ├── dns/               # Depends on: vpc
+│   └── twingate/          # Depends on: vpc (optional)
+├── hosting/
+│   ├── cluster/           # Depends on: vpc
+│   ├── karpenter/         # Depends on: cluster
+│   ├── pod_identities/    # Depends on: cluster
+│   └── addons/            # Depends on: cluster, karpenter
+└── application/
+    ├── database/          # Depends on: vpc, cluster
+    └── s3/                # Depends on: cluster
+```
+
+**Tenants never see or edit these files!**
 
 ## 🔧 Composite Actions
 
@@ -84,8 +118,9 @@ Configures git to use GitHub App token for HTTPS authentication using git creden
 All workflows follow a consistent contract:
 
 ### Common Inputs
-- `stack_path` (required): Path to stack in caller repo
-- `overlay_ref` (optional): Version of this catalog to use
+- `stack_path` (required): Path to tenant YAML in caller repo (e.g., `acme/usw2`)
+- `graph` (optional): Graph to use from catalog (default: `aws/full`)
+- `overlay_ref` (optional): Version of this catalog to use (default: `main`)
 - `tg_args` (optional): Additional Terragrunt arguments
 
 ### Common Secrets
@@ -114,9 +149,43 @@ Provides:
 - Region validation
 - Common locals from tenant.yaml
 
+Each graph node includes this overlay to get consistent provider and state configuration.
+
 ### Azure Overlay (`overlays/azure/root.hcl`)
 
 Stub implementation for future Azure support.
+
+## 🔗 Dependency Graphs
+
+### What are Graphs?
+
+Graphs are pre-built Terragrunt dependency DAGs that define:
+- Which services get deployed
+- In what order (dependency resolution)
+- How data flows between layers (VPC ID, cluster OIDC, etc.)
+- Optional services based on feature flags
+
+### Graph: `aws/full`
+
+Complete AWS environment with all three layers:
+
+**Deployment Order:**
+1. **Substrate** → VPC (foundation) → DNS (depends on VPC) → Twingate (optional, depends on VPC)
+2. **Hosting** → Cluster (depends on VPC) → Karpenter (depends on Cluster) → Pod Identities (depends on Cluster) → Addons (depends on Cluster, Karpenter)
+3. **Application** → Database (depends on VPC, Cluster) → S3 (depends on Cluster)
+
+**How it Works:**
+- Each node reads `TENANT_CONFIG_PATH` (set by workflow)
+- Nodes use `dependency` blocks to consume outputs from other nodes
+- Terragrunt `run-all` executes in correct order automatically
+- Feature flags (`features.twingate`, `features.observability`) control optional services
+
+**Benefits:**
+- ✅ Tenants never manage dependencies
+- ✅ Consistent ordering across all deployments
+- ✅ Cross-layer data passing handled automatically
+- ✅ Optional services skip cleanly when disabled
+- ✅ Centralized graph = easy to update for all tenants
 
 ## 🏷️ Tagging Strategy
 
