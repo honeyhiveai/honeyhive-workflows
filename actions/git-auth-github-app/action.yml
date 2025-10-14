@@ -1,0 +1,21 @@
+name: 'Git Auth GitHub App'
+description: 'Configure git to use GitHub App token for authentication'
+inputs:
+  token:
+    description: 'GitHub App token'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - name: Configure git authentication
+      shell: bash
+      run: |
+        # Configure git to use the token for HTTPS authentication
+        git config --global url."https://x-access-token:${{ inputs.token }}@github.com/".insteadOf "https://github.com/"
+        git config --global url."https://x-access-token:${{ inputs.token }}@github.com/".insteadOf "ssh://git@github.com/"
+        git config --global url."https://x-access-token:${{ inputs.token }}@github.com/".insteadOf "git@github.com:"
+        
+        # Set safe directory for GitHub Actions
+        git config --global --add safe.directory '*'
+        
+        echo "✅ Git authentication configured for GitHub App"

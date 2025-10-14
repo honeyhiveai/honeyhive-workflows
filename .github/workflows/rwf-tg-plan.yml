@@ -1,0 +1,285 @@
+name: 'Reusable Workflow - Terragrunt Plan'
+on:
+  workflow_call:
+    inputs:
+      stack_path:
+        description: 'Path to the stack in the caller repo (e.g., apiary/acme/usw2)'
+        required: true
+        type: string
+      overlay_ref:
+        description: 'Tag/SHA of this repo to checkout for overlay (optional)'
+        required: false
+        type: string
+        default: 'main'
+      tg_args:
+        description: 'Additional Terragrunt arguments (optional)'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      GH_APP_ID:
+        description: 'GitHub App ID for authentication'
+        required: false
+      GH_APP_PRIVATE_KEY:
+        description: 'GitHub App private key'
+        required: false
+      GH_APP_INSTALLATION_TOKEN_SALT:
+        description: 'Salt for GitHub App installation token'
+        required: false
+      GH_APP_TOKEN:
+        description: 'Pre-minted GitHub App token (alternative to App ID/Key)'
+        required: false
+      AWS_OIDC_ROLE:
+        description: 'AWS OIDC role ARN for authentication'
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: read
+
+concurrency:
+  group: tg-${{ inputs.stack_path }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: 'Terragrunt Plan'
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1: Checkout the caller repository
+      - name: Checkout caller repository
+        uses: actions/checkout@v4
+        with:
+          path: stack
+      
+      # Step 2: Mint or receive GitHub App token
+      - name: Generate GitHub App token
+        id: github_token
+        run: |
+          if [[ -n "${{ secrets.GH_APP_TOKEN }}" ]]; then
+            echo "Using provided GitHub App token"
+            echo "token=${{ secrets.GH_APP_TOKEN }}" >> $GITHUB_OUTPUT
+          elif [[ -n "${{ secrets.GH_APP_ID }}" ]] && [[ -n "${{ secrets.GH_APP_PRIVATE_KEY }}" ]]; then
+            echo "Generating GitHub App token"
+            # TODO: Implement token generation logic here
+            # For now, we'll use a placeholder
+            echo "::error::GitHub App token generation not yet implemented"
+            exit 1
+          else
+            echo "::warning::No GitHub authentication provided"
+            echo "token=" >> $GITHUB_OUTPUT
+          fi
+      
+      # Step 3: Configure git authentication
+      - name: Configure git authentication
+        if: steps.github_token.outputs.token != ''
+        uses: ./stack/.github/actions/git-auth-github-app
+        with:
+          token: ${{ steps.github_token.outputs.token }}
+      
+      # Step 4: Checkout this catalog repo for overlays
+      - name: Checkout catalog repository
+        if: inputs.overlay_ref != ''
+        uses: actions/checkout@v4
+        with:
+          repository: honeyhiveai/honeyhive-workflows
+          ref: ${{ inputs.overlay_ref }}
+          path: _catalog
+      
+      # Step 5: Setup Terraform and Terragrunt
+      - name: Setup Terragrunt
+        uses: ./_catalog/actions/setup-terragrunt
+        if: inputs.overlay_ref != ''
+      
+      - name: Setup Terragrunt (fallback)
+        if: inputs.overlay_ref == ''
+        uses: honeyhiveai/honeyhive-workflows/actions/setup-terragrunt@main
+      
+      # Step 6: Configure AWS credentials
+      - name: Configure AWS credentials
+        if: secrets.AWS_OIDC_ROLE != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          aws-region: us-west-2
+          role-duration-seconds: 3600
+      
+      # Step 7: Parallel validation steps
+      - name: Format check
+        id: fmt
+        working-directory: stack/${{ inputs.stack_path }}
+        run: |
+          echo "## 📝 Format Check" >> $GITHUB_STEP_SUMMARY
+          if terragrunt hclfmt --check --recursive 2>&1 | tee fmt.log; then
+            echo "✅ All files properly formatted" >> $GITHUB_STEP_SUMMARY
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Format issues found:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat fmt.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "status=failed" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+      
+      - name: Validate configuration
+        id: validate
+        working-directory: stack/${{ inputs.stack_path }}
+        run: |
+          echo "## ✅ Validation" >> $GITHUB_STEP_SUMMARY
+          if terragrunt validate 2>&1 | tee validate.log; then
+            echo "Configuration is valid" >> $GITHUB_STEP_SUMMARY
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Validation failed:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat validate.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "status=failed" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+      
+      - name: Security scan
+        id: security
+        working-directory: stack/${{ inputs.stack_path }}
+        run: |
+          echo "## 🔒 Security Scan" >> $GITHUB_STEP_SUMMARY
+          
+          # Install checkov
+          pip install checkov --quiet
+          
+          # Run security scan
+          if checkov -d . --framework terraform --quiet --compact 2>&1 | tee security.log; then
+            echo "✅ No security issues found" >> $GITHUB_STEP_SUMMARY
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Security scan results:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat security.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "status=warning" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+      
+      # Step 8: Linter (after parallel checks)
+      - name: Lint with tflint
+        id: lint
+        working-directory: stack/${{ inputs.stack_path }}
+        run: |
+          echo "## 🔍 Linting" >> $GITHUB_STEP_SUMMARY
+          
+          # Install tflint
+          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+          
+          # Initialize and run tflint
+          if tflint --init && tflint --recursive 2>&1 | tee lint.log; then
+            echo "✅ No linting issues found" >> $GITHUB_STEP_SUMMARY
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Linting issues found:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat lint.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "status=warning" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+      
+      # Step 9: Fail if any validation failed
+      - name: Check validation results
+        if: |
+          steps.fmt.outputs.status == 'failed' ||
+          steps.validate.outputs.status == 'failed'
+        run: |
+          echo "::error::Validation failed. Please fix the issues above."
+          exit 1
+      
+      # Step 10: Terragrunt plan
+      - name: Terragrunt init
+        working-directory: stack/${{ inputs.stack_path }}
+        run: terragrunt run-all init --upgrade ${{ inputs.tg_args }}
+      
+      - name: Terragrunt plan
+        id: plan
+        working-directory: stack/${{ inputs.stack_path }}
+        run: |
+          echo "## 📋 Terragrunt Plan" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Stack:** \`${{ inputs.stack_path }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Run plan and capture output
+          set +e
+          terragrunt run-all plan -out=tfplan ${{ inputs.tg_args }} 2>&1 | tee plan.log
+          PLAN_EXIT_CODE=$?
+          set -e
+          
+          # Extract summary from plan output
+          if [[ $PLAN_EXIT_CODE -eq 0 ]]; then
+            echo "### Plan Summary" >> $GITHUB_STEP_SUMMARY
+            
+            # Try to extract resource counts
+            if grep -q "Plan:" plan.log; then
+              grep "Plan:" plan.log | tail -1 >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ Plan generated successfully" >> $GITHUB_STEP_SUMMARY
+            fi
+            
+            # Show any warnings
+            if grep -q "Warning:" plan.log; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "### ⚠️ Warnings" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              grep "Warning:" plan.log >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "### ❌ Plan Failed" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -50 plan.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit $PLAN_EXIT_CODE
+          fi
+      
+      # Step 11: Upload plan artifact
+      - name: Upload plan artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terragrunt-plan-${{ inputs.stack_path }}-${{ github.run_id }}
+          path: |
+            stack/${{ inputs.stack_path }}/tfplan
+            stack/${{ inputs.stack_path }}/plan.log
+            stack/${{ inputs.stack_path }}/.terragrunt-cache/**/tfplan
+          retention-days: 7
+      
+      # Step 12: Comment on PR (if applicable)
+      - name: Update PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `### 🚀 Terragrunt Plan Results
+            
+            **Stack:** \`${{ inputs.stack_path }}\`
+            **Workflow:** ${{ github.run_id }}
+            
+            | Check | Status |
+            |-------|--------|
+            | Format | ${{ steps.fmt.outputs.status == 'success' && '✅' || '❌' }} |
+            | Validate | ${{ steps.validate.outputs.status == 'success' && '✅' || '❌' }} |
+            | Security | ${{ steps.security.outputs.status == 'success' && '✅' || steps.security.outputs.status == 'warning' && '⚠️' || '❌' }} |
+            | Lint | ${{ steps.lint.outputs.status == 'success' && '✅' || steps.lint.outputs.status == 'warning' && '⚠️' || '❌' }} |
+            | Plan | ${{ steps.plan.outcome == 'success' && '✅' || '❌' }} |
+            
+            [View full results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });

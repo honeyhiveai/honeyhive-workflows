@@ -1,0 +1,74 @@
+name: 'Terragrunt Plan - Tenant Stack'
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'apiary/**/*.yaml'
+      - 'apiary/**/*.hcl'
+      - '.github/workflows/terragrunt-*.yml'
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+  detect_changes:
+    name: 'Detect Changed Stacks'
+    runs-on: ubuntu-latest
+    outputs:
+      stacks: ${{ steps.detect.outputs.stacks }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Detect changed stacks
+        id: detect
+        run: |
+          # Get list of changed files
+          CHANGED_FILES=$(git diff --name-only origin/main...HEAD | grep -E '^apiary/[^/]+/[^/]+/' | cut -d/ -f1-3 | sort -u || true)
+          
+          if [[ -z "$CHANGED_FILES" ]]; then
+            echo "No stack changes detected"
+            echo "stacks=[]" >> $GITHUB_OUTPUT
+          else
+            # Convert to JSON array
+            STACKS_JSON=$(echo "$CHANGED_FILES" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            echo "Detected changed stacks: $STACKS_JSON"
+            echo "stacks=$STACKS_JSON" >> $GITHUB_OUTPUT
+          fi
+
+  plan:
+    name: 'Plan ${{ matrix.stack }}'
+    needs: detect_changes
+    if: needs.detect_changes.outputs.stacks != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        stack: ${{ fromJson(needs.detect_changes.outputs.stacks) }}
+      fail-fast: false
+    
+    steps:
+      # Generate GitHub App token for private module access
+      - name: Generate GitHub App token
+        id: app_token
+        uses: tibdex/github-app-token@v2
+        with:
+          app_id: ${{ secrets.GH_APP_ID }}
+          private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          installation_retrieval_mode: id
+          installation_retrieval_payload: ${{ secrets.GH_APP_INSTALLATION_ID }}
+      
+      # Call the reusable plan workflow
+      - name: Plan Terragrunt stack
+        uses: honeyhiveai/honeyhive-workflows/.github/workflows/rwf-tg-plan.yml@v1
+        with:
+          stack_path: ${{ matrix.stack }}
+          overlay_ref: v1  # Pin to a specific version of the catalog
+        secrets:
+          GH_APP_TOKEN: ${{ steps.app_token.outputs.token }}
+          AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}

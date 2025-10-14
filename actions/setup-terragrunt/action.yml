@@ -1,0 +1,51 @@
+name: 'Setup Terragrunt'
+description: 'Install Terraform and Terragrunt with specified versions'
+inputs:
+  terraform_version:
+    description: 'Terraform version to install'
+    required: false
+    default: '1.9.8'
+  terragrunt_version:
+    description: 'Terragrunt version to install'
+    required: false
+    default: '0.66.9'
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.terraform_version }}
+        terraform_wrapper: false
+
+    - name: Setup Terragrunt
+      shell: bash
+      run: |
+        TG_VERSION="${{ inputs.terragrunt_version }}"
+        echo "Installing Terragrunt version: v${TG_VERSION}"
+        
+        # Download Terragrunt binary
+        wget -q "https://github.com/gruntwork-io/terragrunt/releases/download/v${TG_VERSION}/terragrunt_linux_amd64" \
+          -O /tmp/terragrunt
+        
+        # Make it executable and move to PATH
+        chmod +x /tmp/terragrunt
+        sudo mv /tmp/terragrunt /usr/local/bin/terragrunt
+        
+        # Verify installation
+        terragrunt --version
+
+    - name: Create Terraform plugin cache directory
+      shell: bash
+      run: |
+        mkdir -p ~/.terraform.d/plugin-cache
+        echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin-cache" >> $GITHUB_ENV
+
+    - name: Verify installations
+      shell: bash
+      run: |
+        echo "Terraform version:"
+        terraform version
+        echo ""
+        echo "Terragrunt version:"
+        terragrunt --version

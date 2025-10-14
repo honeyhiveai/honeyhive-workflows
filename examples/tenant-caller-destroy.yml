@@ -1,0 +1,55 @@
+name: 'Terragrunt Destroy - Tenant Stack'
+
+on:
+  workflow_dispatch:
+    inputs:
+      stack_path:
+        description: 'Stack to destroy (e.g., apiary/acme/usw2)'
+        required: true
+        type: string
+      confirm_destroy:
+        description: 'Type "DESTROY" to confirm destruction'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+  destroy:
+    name: 'Destroy ${{ inputs.stack_path }}'
+    runs-on: ubuntu-latest
+    environment: production  # Requires manual approval
+    
+    steps:
+      # Validate confirmation
+      - name: Validate destroy confirmation
+        run: |
+          if [[ "${{ inputs.confirm_destroy }}" != "DESTROY" ]]; then
+            echo "::error::You must type 'DESTROY' to confirm the destruction of ${{ inputs.stack_path }}"
+            exit 1
+          fi
+          echo "⚠️ Destruction confirmed for: ${{ inputs.stack_path }}"
+      
+      # Generate GitHub App token for private module access
+      - name: Generate GitHub App token
+        id: app_token
+        uses: tibdex/github-app-token@v2
+        with:
+          app_id: ${{ secrets.GH_APP_ID }}
+          private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          installation_retrieval_mode: id
+          installation_retrieval_payload: ${{ secrets.GH_APP_INSTALLATION_ID }}
+      
+      # Call the reusable destroy workflow
+      - name: Destroy Terragrunt stack
+        uses: honeyhiveai/honeyhive-workflows/.github/workflows/rwf-tg-destroy.yml@v1
+        with:
+          stack_path: ${{ inputs.stack_path }}
+          overlay_ref: v1  # Pin to a specific version of the catalog
+          confirm_destroy: ${{ inputs.confirm_destroy }}
+        secrets:
+          GH_APP_TOKEN: ${{ steps.app_token.outputs.token }}
+          AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
