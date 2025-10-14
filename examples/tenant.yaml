@@ -30,21 +30,25 @@ service: cluster
 # AWS account ID (optional, for validation)
 account_id: "123456789012"
 
-# Network configuration
-network:
-  cidr: 10.42.0.0/16
-  availability_zones:
-    - us-west-2a
-    - us-west-2b
-    - us-west-2c
-  private_subnets:
-    - 10.42.1.0/24
-    - 10.42.2.0/24
-    - 10.42.3.0/24
-  public_subnets:
-    - 10.42.101.0/24
-    - 10.42.102.0/24
-    - 10.42.103.0/24
+# VPC configuration
+vpc_cidr: 10.42.0.0/16
+
+# Subnet configuration (optional - sensible defaults)
+subnet_count: 3  # Number of AZs to use (default: 3)
+subnet_nat_strategy: per_az  # NAT strategy: none, single, per_az (default: single)
+
+# Optional: Explicitly specify AZs (otherwise uses first N AZs in region)
+# subnet_azs:
+#   - us-west-2a
+#   - us-west-2b
+#   - us-west-2c
+
+# Optional: Override auto-calculated subnet CIDRs
+# By default, VPC module auto-calculates:
+# - Public: /24 subnets (for /16 VPC)
+# - Private: /20 subnets (for /16 VPC)
+# subnet_public_cidrs: null
+# subnet_private_cidrs: null
 
 # Feature flags for optional components
 features:
@@ -86,5 +90,4 @@ tags:
   Compliance: GDPR
 
 # State bucket override (optional - defaults to honeyhive-federated-{sregion}-state)
-# Useful for BYOC scenarios where tenant manages their own state
 # state_bucket: acme-terraform-state-usw2
