@@ -4,11 +4,16 @@ on:
   workflow_call:
     inputs:
       stack_path:
-        description: 'Path to the stack in the caller repo (e.g., apiary/acme/usw2)'
+        description: 'Path to the tenant stack in the caller repo (e.g., acme/usw2)'
         required: true
         type: string
+      graph:
+        description: 'Graph to use from catalog (e.g., aws/full)'
+        required: false
+        type: string
+        default: 'aws/full'
       overlay_ref:
-        description: 'Tag/SHA of this repo to checkout for overlay (optional)'
+        description: 'Tag/SHA of this repo to checkout for overlay and graph (optional)'
         required: false
         type: string
         default: 'main'
@@ -51,11 +56,11 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # Step 1: Checkout the caller repository
+      # Step 1: Checkout the caller repository (apiary)
       - name: Checkout caller repository
         uses: actions/checkout@v4
         with:
-          path: stack
+          path: apiary
       
       # Step 2: Generate GitHub App token
       - name: Generate GitHub App token
@@ -67,7 +72,7 @@ jobs:
           owner: honeyhiveai
           repositories: 'honeyhive-terraform,tf-module-aws-iam,tf-module-aws-vpc,tf-module-aws-secrets-manager,tf-module-helm-argocd,tf-module-helm-karpenter,tf-module-helm-eso'
       
-      # Step 3: Checkout catalog repository for overlays
+      # Step 3: Checkout catalog repository for overlays and graphs
       - name: Checkout catalog repository
         uses: actions/checkout@v4
         with:
@@ -89,19 +94,30 @@ jobs:
       
       # Step 6: Configure AWS credentials
       - name: Configure AWS credentials
-        if: secrets.AWS_OIDC_ROLE != ''
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
           aws-region: us-west-2
           role-duration-seconds: 3600
       
-      # Step 7: Initialize summary
-      - name: Initialize drift summary
+      # Step 7: Set tenant configuration path
+      - name: Set tenant configuration
+        id: tenant_config
         run: |
+          TENANT_CONFIG_PATH="${{ github.workspace }}/apiary/${{ inputs.stack_path }}/tenant.yaml"
+          
+          if [[ ! -f "$TENANT_CONFIG_PATH" ]]; then
+            echo "::error::Tenant configuration not found: $TENANT_CONFIG_PATH"
+            exit 1
+          fi
+          
+          echo "TENANT_CONFIG_PATH=$TENANT_CONFIG_PATH" >> $GITHUB_ENV
+          echo "TG_GRAPH_DIR=${{ github.workspace }}/_catalog/graphs/${{ inputs.graph }}" >> $GITHUB_ENV
+          
           echo "## 🔍 Drift Detection" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Stack:** \`${{ inputs.stack_path }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Graph:** \`${{ inputs.graph }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
       
@@ -110,18 +126,24 @@ jobs:
         uses: gruntwork-io/terragrunt-action@v3
         with:
           tg_version: '0.66.9'
-          tg_dir: stack/${{ inputs.stack_path }}
-          tg_command: 'run-all init --upgrade'
+          tg_dir: ${{ env.TG_GRAPH_DIR }}
+          tg_command: 'run-all init --terragrunt-include-external-dependencies'
           tg_add_approve: '0'
+        env:
+          TENANT_CONFIG_PATH: ${{ env.TENANT_CONFIG_PATH }}
+          TF_IN_AUTOMATION: 'true'
       
       # Step 9: Refresh state
       - name: Refresh state
         uses: gruntwork-io/terragrunt-action@v3
         with:
           tg_version: '0.66.9'
-          tg_dir: stack/${{ inputs.stack_path }}
-          tg_command: 'run-all refresh'
+          tg_dir: ${{ env.TG_GRAPH_DIR }}
+          tg_command: 'run-all refresh --terragrunt-include-external-dependencies'
           tg_add_approve: '1'
+        env:
+          TENANT_CONFIG_PATH: ${{ env.TENANT_CONFIG_PATH }}
+          TF_IN_AUTOMATION: 'true'
       
       # Step 10: Detect drift
       - name: Detect drift
@@ -129,9 +151,12 @@ jobs:
         uses: gruntwork-io/terragrunt-action@v3
         with:
           tg_version: '0.66.9'
-          tg_dir: stack/${{ inputs.stack_path }}
-          tg_command: 'run-all plan -detailed-exitcode ${{ inputs.tg_args }}'
+          tg_dir: ${{ env.TG_GRAPH_DIR }}
+          tg_command: 'run-all plan -detailed-exitcode --terragrunt-include-external-dependencies ${{ inputs.tg_args }}'
           tg_add_approve: '0'
+        env:
+          TENANT_CONFIG_PATH: ${{ env.TENANT_CONFIG_PATH }}
+          TF_IN_AUTOMATION: 'true'
         continue-on-error: true
       
       # Step 11: Interpret drift results
@@ -149,12 +174,12 @@ jobs:
             echo "drift_detected=false" >> $GITHUB_OUTPUT
             echo "drift_status=clean" >> $GITHUB_OUTPUT
             echo "### ✅ No Drift Detected" >> $GITHUB_STEP_SUMMARY
-            echo "Infrastructure matches the desired state." >> $GITHUB_STEP_SUMMARY
+            echo "Infrastructure matches the desired state across all layers." >> $GITHUB_STEP_SUMMARY
           elif [[ "$EXIT_CODE" == "2" ]]; then
             echo "drift_detected=true" >> $GITHUB_OUTPUT
             echo "drift_status=drift" >> $GITHUB_OUTPUT
             echo "### ⚠️ Drift Detected!" >> $GITHUB_STEP_SUMMARY
-            echo "Infrastructure has drifted from the desired state." >> $GITHUB_STEP_SUMMARY
+            echo "Infrastructure has drifted from the desired state in one or more layers." >> $GITHUB_STEP_SUMMARY
           else
             echo "drift_detected=error" >> $GITHUB_OUTPUT
             echo "drift_status=error" >> $GITHUB_OUTPUT
@@ -174,6 +199,7 @@ jobs:
             const body = `## 🚨 Infrastructure Drift Detected
             
             **Stack:** \`${{ inputs.stack_path }}\`
+            **Graph:** \`${{ inputs.graph }}\`
             **Detection Time:** ${new Date().toISOString()}
             **Workflow Run:** [#${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
             
@@ -181,8 +207,8 @@ jobs:
             
             Infrastructure drift has been detected in the stack. Please review the changes and either:
             
-            1. **Accept the drift** - Update the Terraform configuration to match the current state
-            2. **Correct the drift** - Run \`terragrunt apply\` to restore the desired state
+            1. **Accept the drift** - Update the tenant.yaml configuration if needed
+            2. **Correct the drift** - Run apply workflow to restore the desired state
             
             ### Drift Summary
             
@@ -242,13 +268,9 @@ jobs:
             TITLE="❌ Drift Detection Error: ${{ inputs.stack_path }}"
             COLOR="danger"
             TEXT="Error occurred while checking for drift in stack ${{ inputs.stack_path }}"
-          else
-            TITLE="✅ No Drift: ${{ inputs.stack_path }}"
-            COLOR="good"
-            TEXT="No infrastructure drift detected in stack ${{ inputs.stack_path }}"
           fi
           
-          # Send webhook (generic JSON format, adapt as needed for Slack/Teams/etc)
+          # Send webhook (generic JSON format)
           curl -X POST "$WEBHOOK_URL" \
             -H "Content-Type: application/json" \
             -H "X-Webhook-Secret: ${{ secrets.NOTIFICATION_WEBHOOK_SECRET }}" \
@@ -257,6 +279,7 @@ jobs:
               \"text\": \"$TEXT\",
               \"color\": \"$COLOR\",
               \"stack\": \"${{ inputs.stack_path }}\",
+              \"graph\": \"${{ inputs.graph }}\",
               \"status\": \"$DRIFT_STATUS\",
               \"workflow_run\": \"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",
               \"timestamp\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\"
