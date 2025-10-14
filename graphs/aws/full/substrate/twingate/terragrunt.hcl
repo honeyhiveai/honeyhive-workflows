@@ -12,8 +12,11 @@ locals {
 
 # Skip if:
 # 1. Not included in deployment type's substrate_services list, OR
-# 2. features.twingate explicitly disabled
-skip = !(contains(include.root.locals.current_deployment.substrate_services, "twingate") && try(local.cfg.features.twingate, true))
+# 2. Feature disabled (checks tenant override, then deployment type default)
+skip = !(
+  contains(include.root.locals.current_deployment.substrate_services, "twingate") && 
+  try(local.cfg.features.twingate, include.root.locals.current_deployment.default_features.twingate)
+)
 
 dependency "vpc" {
   config_path = "${get_repo_root()}/graphs/aws/full/substrate/vpc"

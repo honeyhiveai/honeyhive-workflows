@@ -51,12 +51,17 @@ subnet_nat_strategy: per_az  # NAT strategy: none, single, per_az (default: sing
 # subnet_private_cidrs: null
 
 # Feature flags for optional components
-features:
-  karpenter: true  # Enabled by default for node management
-  external_secrets: true  # Enabled by default for secrets management
-  aws_load_balancer_controller: true  # Enabled by default for ingress
-  twingate: false  # VPN access (optional)
-  observability: false  # Monitoring stack (optional)
+# These are set by default based on deployment_type, but can be overridden here
+# Deployment type defaults:
+#   full_stack: all features enabled
+#   control_plane: karpenter=false, twingate=false (no node scaling, no VPN)
+#   data_plane: external_secrets=false, twingate=false, observability=false (minimal)
+#   customer: karpenter=false, twingate=false, observability=false (basic)
+
+# Optional: Override deployment type defaults
+# features:
+#   twingate: true  # Enable even if deployment_type defaults to false
+#   observability: false  # Disable even if deployment_type defaults to true
 
 # EKS cluster configuration (for hosting/kubernetes stacks)
 # Note: Node configuration is handled by Karpenter
