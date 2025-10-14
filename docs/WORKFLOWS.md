@@ -19,7 +19,7 @@ This document provides detailed documentation for all reusable workflows in the 
 
 ### GitHub App Configuration
 
-All workflows require GitHub App authentication to access private Terraform modules.
+All workflows require GitHub App authentication to access private Terraform modules. Tokens are automatically generated using [actions/create-github-app-token@v2](https://github.com/actions/create-github-app-token).
 
 #### Required Secrets
 
@@ -27,14 +27,6 @@ All workflows require GitHub App authentication to access private Terraform modu
 secrets:
   GH_APP_ID: ${{ secrets.GH_APP_ID }}
   GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
-  GH_APP_INSTALLATION_TOKEN_SALT: ${{ secrets.GH_APP_INSTALLATION_TOKEN_SALT }}
-```
-
-#### Alternative: Pre-minted Token
-
-```yaml
-secrets:
-  GH_APP_TOKEN: ${{ steps.app_token.outputs.token }}
 ```
 
 ### AWS OIDC Configuration
@@ -50,7 +42,7 @@ secrets:
 
 ### Purpose
 
-Generates and validates Terragrunt plans with comprehensive checks.
+Generates and validates Terragrunt plans with comprehensive checks using [gruntwork-io/terragrunt-action](https://github.com/gruntwork-io/terragrunt-action) for execution.
 
 ### Inputs
 
@@ -64,36 +56,35 @@ Generates and validates Terragrunt plans with comprehensive checks.
 
 ```mermaid
 graph TD
-    A[Checkout Repos] --> B[Setup Authentication]
-    B --> C{Parallel Validation}
-    C --> D[Format Check]
-    C --> E[Validate Config]
-    C --> F[Security Scan]
-    D --> G[Linting]
-    E --> G
-    F --> G
-    G --> H[Terragrunt Plan]
-    H --> I[Generate Summary]
-    I --> J[Upload Artifacts]
+    A[Checkout Repos] --> B[Generate GitHub App Token]
+    B --> C[Setup Terraform/Terragrunt]
+    C --> D[Configure Git Auth]
+    D --> E{Parallel Validation}
+    E --> F[Format Check]
+    E --> G[Validate Config]
+    E --> H[Security Scan]
+    F --> I{Fail Fast Check}
+    G --> I
+    H --> I
+    I -->|Pass| J[Terragrunt Init]
+    I -->|Fail| K[Exit with Error]
+    J --> L[Terragrunt Plan]
+    L --> M[Generate Summary & PR Comment]
 ```
 
 ### Validation Steps
 
-1. **Format Check** (`terragrunt hclfmt`)
+1. **Format Check** (`terragrunt hclfmt --check`)
    - Ensures consistent formatting
    - Non-blocking warning if issues found
 
 2. **Validation** (`terragrunt validate`)
    - Verifies configuration syntax
-   - Blocking error if invalid
+   - **Blocking error** if invalid - workflow fails here
 
 3. **Security Scan** (`checkov`)
-   - Scans for security issues
+   - Scans for security issues  
    - Non-blocking warning for findings
-
-4. **Linting** (`tflint`)
-   - Best practice checks
-   - Non-blocking warning for issues
 
 ### Outputs
 
@@ -110,7 +101,8 @@ graph TD
     stack_path: apiary/acme/usw2
     overlay_ref: v1.2.3
   secrets:
-    GH_APP_TOKEN: ${{ secrets.GH_APP_TOKEN }}
+    GH_APP_ID: ${{ secrets.GH_APP_ID }}
+    GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
     AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
 ```
 
@@ -118,7 +110,7 @@ graph TD
 
 ### Purpose
 
-Applies Terragrunt changes with safety checks and audit trail.
+Applies Terragrunt changes with safety checks and audit trail using [gruntwork-io/terragrunt-action](https://github.com/gruntwork-io/terragrunt-action) with auto-approve enabled.
 
 ### Inputs
 
@@ -280,7 +272,8 @@ graph TD
     stack_path: apiary/acme/usw2
     notification_webhook: ${{ secrets.SLACK_WEBHOOK }}
   secrets:
-    GH_APP_TOKEN: ${{ secrets.GH_APP_TOKEN }}
+    GH_APP_ID: ${{ secrets.GH_APP_ID }}
+    GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
     AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
     NOTIFICATION_WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
 ```
@@ -369,15 +362,15 @@ environment:
 **Error**: `Could not download module: git@github.com: Permission denied`
 
 **Solution**:
-```yaml
-# Ensure GitHub App token is generated
-- name: Generate token
-  id: app_token
-  uses: tibdex/github-app-token@v2
+- Verify GitHub App credentials are correctly configured
+- Ensure `GH_APP_ID` and `GH_APP_PRIVATE_KEY` secrets are set
+- Token generation happens automatically using `actions/create-github-app-token@v2`
 
-# Pass token to workflow
+Example:
+```yaml
 secrets:
-  GH_APP_TOKEN: ${{ steps.app_token.outputs.token }}
+  GH_APP_ID: ${{ secrets.GH_APP_ID }}
+  GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
 ```
 
 #### 2. State Lock Timeout
@@ -505,13 +498,11 @@ on:
         default: ""
     secrets:
       GH_APP_ID:
-        required: false
+        required: true  # Required for token generation
       GH_APP_PRIVATE_KEY:
-        required: false
-      GH_APP_TOKEN:
-        required: false
+        required: true  # Required for token generation
       AWS_OIDC_ROLE:
-        required: false
+        required: false  # Optional for AWS access
 ```
 
 ### Environment Variables

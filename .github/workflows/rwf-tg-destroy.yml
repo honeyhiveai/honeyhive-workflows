@@ -1,4 +1,5 @@
 name: 'Reusable Workflow - Terragrunt Destroy'
+
 on:
   workflow_call:
     inputs:
@@ -23,16 +24,10 @@ on:
     secrets:
       GH_APP_ID:
         description: 'GitHub App ID for authentication'
-        required: false
+        required: true
       GH_APP_PRIVATE_KEY:
         description: 'GitHub App private key'
-        required: false
-      GH_APP_INSTALLATION_TOKEN_SALT:
-        description: 'Salt for GitHub App installation token'
-        required: false
-      GH_APP_TOKEN:
-        description: 'Pre-minted GitHub App token (alternative to App ID/Key)'
-        required: false
+        required: true
       AWS_OIDC_ROLE:
         description: 'AWS OIDC role ARN for authentication'
         required: false
@@ -68,47 +63,35 @@ jobs:
         with:
           path: stack
       
-      # Step 3: Mint or receive GitHub App token
+      # Step 3: Generate GitHub App token
       - name: Generate GitHub App token
-        id: github_token
-        run: |
-          if [[ -n "${{ secrets.GH_APP_TOKEN }}" ]]; then
-            echo "Using provided GitHub App token"
-            echo "token=${{ secrets.GH_APP_TOKEN }}" >> $GITHUB_OUTPUT
-          elif [[ -n "${{ secrets.GH_APP_ID }}" ]] && [[ -n "${{ secrets.GH_APP_PRIVATE_KEY }}" ]]; then
-            echo "Generating GitHub App token"
-            # TODO: Implement token generation logic here
-            echo "::error::GitHub App token generation not yet implemented"
-            exit 1
-          else
-            echo "::warning::No GitHub authentication provided"
-            echo "token=" >> $GITHUB_OUTPUT
-          fi
-      
-      # Step 4: Configure git authentication
-      - name: Configure git authentication
-        if: steps.github_token.outputs.token != ''
-        uses: ./stack/.github/actions/git-auth-github-app
+        id: app_token
+        uses: actions/create-github-app-token@v2
         with:
-          token: ${{ steps.github_token.outputs.token }}
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: honeyhiveai
+          repositories: 'honeyhive-terraform,tf-module-aws-iam,tf-module-aws-vpc,tf-module-aws-secrets-manager,tf-module-helm-argocd,tf-module-helm-karpenter,tf-module-helm-eso'
       
-      # Step 5: Checkout this catalog repo for overlays
+      # Step 4: Checkout catalog repository for overlays
       - name: Checkout catalog repository
-        if: inputs.overlay_ref != ''
         uses: actions/checkout@v4
         with:
           repository: honeyhiveai/honeyhive-workflows
           ref: ${{ inputs.overlay_ref }}
           path: _catalog
       
-      # Step 6: Setup Terraform and Terragrunt
+      # Step 5: Setup Terraform and Terragrunt
       - name: Setup Terragrunt
         uses: ./_catalog/actions/setup-terragrunt
-        if: inputs.overlay_ref != ''
+        with:
+          token: ${{ steps.app_token.outputs.token }}
       
-      - name: Setup Terragrunt (fallback)
-        if: inputs.overlay_ref == ''
-        uses: honeyhiveai/honeyhive-workflows/actions/setup-terragrunt@main
+      # Step 6: Configure git authentication
+      - name: Configure git authentication
+        uses: ./_catalog/actions/git-auth-github-app
+        with:
+          token: ${{ steps.app_token.outputs.token }}
       
       # Step 7: Configure AWS credentials
       - name: Configure AWS credentials
@@ -119,94 +102,78 @@ jobs:
           aws-region: us-west-2
           role-duration-seconds: 3600
       
-      # Step 8: Backup current state
+      # Step 8: Initialize summary
+      - name: Initialize destroy summary
+        run: |
+          echo "## 🔥 Terragrunt Destroy" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Stack:** \`${{ inputs.stack_path }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "**Destroyed by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **WARNING:** This will destroy all infrastructure!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+      
+      # Step 9: Backup current state
       - name: Backup current state
         working-directory: stack/${{ inputs.stack_path }}
         run: |
-          echo "## 💾 Backing Up State" >> $GITHUB_STEP_SUMMARY
+          echo "### 💾 State Backup" >> $GITHUB_STEP_SUMMARY
           
           # Initialize first
-          terragrunt run-all init ${{ inputs.tg_args }}
+          terragrunt run-all init
           
           # Pull and backup current state
           if terragrunt state pull > state-backup.json 2>/dev/null; then
             echo "✅ State backed up successfully" >> $GITHUB_STEP_SUMMARY
-            echo "Resources to be destroyed:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Resources to be destroyed:**" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             terragrunt state list 2>/dev/null | head -20 >> $GITHUB_STEP_SUMMARY || echo "No resources found"
             echo '```' >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ No existing state found or unable to backup" >> $GITHUB_STEP_SUMMARY
           fi
+          echo "" >> $GITHUB_STEP_SUMMARY
       
-      # Step 9: Plan destruction
+      # Step 10: Plan destruction
       - name: Plan destruction
         id: plan_destroy
-        working-directory: stack/${{ inputs.stack_path }}
-        run: |
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## 📋 Destruction Plan" >> $GITHUB_STEP_SUMMARY
-          
-          set +e
-          terragrunt run-all plan -destroy ${{ inputs.tg_args }} 2>&1 | tee destroy-plan.log
-          PLAN_EXIT_CODE=$?
-          set -e
-          
-          if [[ $PLAN_EXIT_CODE -eq 0 ]]; then
-            echo "✅ Destruction plan generated" >> $GITHUB_STEP_SUMMARY
-            
-            # Show summary of resources to be destroyed
-            if grep -q "Plan:" destroy-plan.log; then
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              grep "Plan:" destroy-plan.log | tail -1 >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "❌ Failed to generate destruction plan" >> $GITHUB_STEP_SUMMARY
-            exit $PLAN_EXIT_CODE
-          fi
+        uses: gruntwork-io/terragrunt-action@v3
+        with:
+          tg_version: '0.66.9'
+          tg_dir: stack/${{ inputs.stack_path }}
+          tg_command: 'run-all plan -destroy ${{ inputs.tg_args }}'
+          tg_add_approve: '0'
       
-      # Step 10: Execute destroy
+      # Step 11: Execute destroy
       - name: Terragrunt destroy
         id: destroy
-        working-directory: stack/${{ inputs.stack_path }}
+        uses: gruntwork-io/terragrunt-action@v3
+        with:
+          tg_version: '0.66.9'
+          tg_dir: stack/${{ inputs.stack_path }}
+          tg_command: 'run-all destroy ${{ inputs.tg_args }}'
+          tg_add_approve: '1'
+          tg_comment: '1'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      
+      # Step 12: Destroy summary
+      - name: Destroy summary
+        if: always()
         run: |
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## 🔥 Executing Destruction" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Stack:** \`${{ inputs.stack_path }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
-          echo "**Destroyed by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          # Execute destruction
-          set +e
-          terragrunt run-all destroy -auto-approve ${{ inputs.tg_args }} 2>&1 | tee destroy.log
-          DESTROY_EXIT_CODE=$?
-          set -e
-          
-          # Process results
-          if [[ $DESTROY_EXIT_CODE -eq 0 ]]; then
-            echo "### ✅ Destruction Successful" >> $GITHUB_STEP_SUMMARY
-            
-            if grep -q "Destroy complete!" destroy.log; then
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              grep "Destroy complete!" destroy.log | tail -1 >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-            fi
+          echo "### 📊 Destroy Results" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ steps.destroy.outcome }}" == "success" ]]; then
+            echo "✅ Destroy completed successfully" >> $GITHUB_STEP_SUMMARY
           else
-            echo "### ❌ Destruction Failed" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Destroy failed" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "⚠️ **CRITICAL:** Partial destruction may have occurred!" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Error details:" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -100 destroy.log >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            exit $DESTROY_EXIT_CODE
           fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[View full destroy output](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
       
-      # Step 11: Verify destruction
+      # Step 13: Verify destruction
       - name: Verify destruction
         if: success()
         working-directory: stack/${{ inputs.stack_path }}
@@ -218,14 +185,11 @@ jobs:
           if terragrunt state list 2>/dev/null | grep -q .; then
             REMAINING=$(terragrunt state list | wc -l)
             echo "⚠️ Warning: $REMAINING resources still exist in state" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            terragrunt state list >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
           else
             echo "✅ All resources successfully destroyed" >> $GITHUB_STEP_SUMMARY
           fi
       
-      # Step 12: Upload artifacts
+      # Step 14: Upload artifacts
       - name: Upload destruction artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -233,33 +197,4 @@ jobs:
           name: terragrunt-destroy-${{ inputs.stack_path }}-${{ github.run_id }}
           path: |
             stack/${{ inputs.stack_path }}/state-backup.json
-            stack/${{ inputs.stack_path }}/destroy-plan.log
-            stack/${{ inputs.stack_path }}/destroy.log
           retention-days: 90  # Keep destruction records longer
-      
-      # Step 13: Update PR/Issue (if applicable)
-      - name: Update PR comment
-        if: github.event_name == 'pull_request' && always()
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const status = '${{ steps.destroy.outcome }}' === 'success' ? '✅ Success' : '❌ Failed';
-            const output = `### 🔥 Terragrunt Destroy Results
-            
-            **Stack:** \`${{ inputs.stack_path }}\`
-            **Status:** ${status}
-            **Workflow:** ${{ github.run_id }}
-            **Destroyed by:** @${{ github.actor }}
-            **Timestamp:** ${new Date().toISOString()}
-            
-            ⚠️ **WARNING:** Infrastructure has been destroyed!
-            
-            [View full results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            });

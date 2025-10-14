@@ -10,12 +10,11 @@ runs:
     - name: Configure git authentication
       shell: bash
       run: |
-        # Configure git to use the token for HTTPS authentication
-        git config --global url."https://x-access-token:${{ inputs.token }}@github.com/".insteadOf "https://github.com/"
-        git config --global url."https://x-access-token:${{ inputs.token }}@github.com/".insteadOf "ssh://git@github.com/"
-        git config --global url."https://x-access-token:${{ inputs.token }}@github.com/".insteadOf "git@github.com:"
+        # Configure git credential helper for Terraform/Terragrunt module access
+        git config --global credential.helper store
+        echo "https://x-access-token:${{ inputs.token }}@github.com" > ~/.git-credentials
         
         # Set safe directory for GitHub Actions
         git config --global --add safe.directory '*'
         
-        echo "✅ Git authentication configured for GitHub App"
+        echo "✅ Git credentials configured for Terraform/Terragrunt module access"

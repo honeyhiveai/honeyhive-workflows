@@ -9,31 +9,23 @@ inputs:
     description: 'Terragrunt version to install'
     required: false
     default: '0.66.9'
+  token:
+    description: 'GitHub token for authentication (optional)'
+    required: false
+    default: ''
 runs:
   using: 'composite'
   steps:
     - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
+      uses: autero1/action-terraform@v3
       with:
         terraform_version: ${{ inputs.terraform_version }}
-        terraform_wrapper: false
 
     - name: Setup Terragrunt
-      shell: bash
-      run: |
-        TG_VERSION="${{ inputs.terragrunt_version }}"
-        echo "Installing Terragrunt version: v${TG_VERSION}"
-        
-        # Download Terragrunt binary
-        wget -q "https://github.com/gruntwork-io/terragrunt/releases/download/v${TG_VERSION}/terragrunt_linux_amd64" \
-          -O /tmp/terragrunt
-        
-        # Make it executable and move to PATH
-        chmod +x /tmp/terragrunt
-        sudo mv /tmp/terragrunt /usr/local/bin/terragrunt
-        
-        # Verify installation
-        terragrunt --version
+      uses: autero1/action-terragrunt@v3
+      with:
+        terragrunt-version: ${{ inputs.terragrunt_version }}
+        token: ${{ inputs.token }}
 
     - name: Create Terraform plugin cache directory
       shell: bash

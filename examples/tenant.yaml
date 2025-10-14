@@ -43,26 +43,16 @@ network:
 
 # Feature flags for optional components
 features:
-  pinot: true
-  trino: true
-  flink: true
-  nessie: true
-  iceberg: true
-  karpenter: true
-  external_secrets: true
-  aws_load_balancer_controller: true
-  cluster_autoscaler: false  # Disabled if using Karpenter
+  karpenter: true  # Enabled by default for node management
+  external_secrets: true  # Enabled by default for secrets management
+  aws_load_balancer_controller: true  # Enabled by default for ingress
+  twingate: false  # VPN access (optional)
+  observability: false  # Monitoring stack (optional)
 
 # EKS cluster configuration (for hosting/kubernetes stacks)
+# Note: Node configuration is handled by Karpenter
 cluster:
   version: "1.29"
-  instance_types:
-    - m5.large
-    - m5.xlarge
-  desired_size: 3
-  min_size: 2
-  max_size: 10
-  disk_size: 100
 
 # Database configuration (for application/database stacks)
 database:

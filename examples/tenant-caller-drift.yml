@@ -51,16 +51,6 @@ jobs:
       max-parallel: 5  # Run up to 5 drift checks in parallel
     
     steps:
-      # Generate GitHub App token for private module access
-      - name: Generate GitHub App token
-        id: app_token
-        uses: tibdex/github-app-token@v2
-        with:
-          app_id: ${{ secrets.GH_APP_ID }}
-          private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-          installation_retrieval_mode: id
-          installation_retrieval_payload: ${{ secrets.GH_APP_INSTALLATION_ID }}
-      
       # Call the reusable drift detection workflow
       - name: Check for drift
         uses: honeyhiveai/honeyhive-workflows/.github/workflows/rwf-tg-drift.yml@v1
@@ -69,7 +59,8 @@ jobs:
           overlay_ref: v1  # Pin to a specific version of the catalog
           notification_webhook: ${{ secrets.DRIFT_NOTIFICATION_WEBHOOK }}
         secrets:
-          GH_APP_TOKEN: ${{ steps.app_token.outputs.token }}
+          GH_APP_ID: ${{ secrets.GH_APP_ID }}
+          GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
           AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
           NOTIFICATION_WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
 

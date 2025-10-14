@@ -59,23 +59,24 @@ honeyhive-workflows/
 
 ### setup-terragrunt
 
-Installs Terraform and Terragrunt with specified versions.
+Installs Terraform and Terragrunt with specified versions using [autero1/action-terraform](https://github.com/autero1/action-terraform) and [autero1/action-terragrunt](https://github.com/autero1/action-terragrunt).
 
 ```yaml
 - uses: honeyhiveai/honeyhive-workflows/actions/setup-terragrunt@v1
   with:
     terraform_version: '1.9.8'    # Optional, defaults to 1.9.8
     terragrunt_version: '0.66.9'  # Optional, defaults to 0.66.9
+    token: ${{ steps.app_token.outputs.token }}  # Optional, for private repos
 ```
 
 ### git-auth-github-app
 
-Configures git to use GitHub App token for HTTPS authentication.
+Configures git to use GitHub App token for HTTPS authentication using git credential helper.
 
 ```yaml
 - uses: honeyhiveai/honeyhive-workflows/actions/git-auth-github-app@v1
   with:
-    token: ${{ secrets.GH_APP_TOKEN }}
+    token: ${{ steps.app_token.outputs.token }}
 ```
 
 ## 🔄 Reusable Workflows
@@ -88,17 +89,19 @@ All workflows follow a consistent contract:
 - `tg_args` (optional): Additional Terragrunt arguments
 
 ### Common Secrets
-- `GH_APP_ID`, `GH_APP_PRIVATE_KEY`: For GitHub App auth
-- `GH_APP_TOKEN`: Pre-minted token (alternative)
-- `AWS_OIDC_ROLE`: AWS role for authentication
+- `GH_APP_ID`: GitHub App ID (required)
+- `GH_APP_PRIVATE_KEY`: GitHub App private key (required)
+- `AWS_OIDC_ROLE`: AWS role ARN for authentication (optional)
 
 ### Workflow Details
 
+All workflows use [gruntwork-io/terragrunt-action](https://github.com/gruntwork-io/terragrunt-action) for Terragrunt execution with automatic PR commenting and output capture.
+
 | Workflow | Purpose | Key Features |
 |----------|---------|--------------|
-| `rwf-tg-plan.yml` | Generate Terragrunt plan | Format/validate/security checks, plan summary |
-| `rwf-tg-apply.yml` | Apply infrastructure changes | Environment protection, apply logs |
-| `rwf-tg-destroy.yml` | Destroy infrastructure | Confirmation required, state backup |
+| `rwf-tg-plan.yml` | Generate Terragrunt plan | Format/validate/security checks, plan summary, PR comments |
+| `rwf-tg-apply.yml` | Apply infrastructure changes | Environment protection, auto-approve, PR comments |
+| `rwf-tg-destroy.yml` | Destroy infrastructure | Confirmation required, state backup, PR comments |
 | `rwf-tg-drift.yml` | Detect configuration drift | Issue creation, webhook notifications |
 
 ## 📦 Overlays
@@ -132,10 +135,11 @@ All resources are tagged with:
 
 ### GitHub App Authentication
 
-Required for accessing private Terraform modules:
+Required for accessing private Terraform modules. Token is generated automatically using [actions/create-github-app-token](https://github.com/actions/create-github-app-token).
+
+Required secrets:
 - `GH_APP_ID`: GitHub App ID
-- `GH_APP_PRIVATE_KEY`: Private key (base64 encoded)
-- `GH_APP_INSTALLATION_TOKEN_SALT`: Optional salt
+- `GH_APP_PRIVATE_KEY`: Private key (PEM format)
 
 ### AWS OIDC Authentication
 
@@ -175,10 +179,10 @@ uses: honeyhiveai/honeyhive-workflows/.github/workflows/rwf-tg-plan.yml@v1.2.3
 ## 📈 Workflow Pipeline Order
 
 Plan workflow execution order:
-1. **Parallel**: Format check | Validate | Security scan
-2. **Sequential**: Linter
-3. **Sequential**: Terragrunt plan
-4. **Output**: Job summary & artifact upload
+1. **Parallel validation**: Format check | Configuration validate | Security scan (Checkov)
+2. **Fail fast**: Exit if validation fails
+3. **Sequential**: Terragrunt init → Terragrunt plan
+4. **Output**: Job summary with status indicators and PR comments
 
 ## 🚦 Concurrency Control
 

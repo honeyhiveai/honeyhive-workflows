@@ -1,4 +1,5 @@
 name: 'Reusable Workflow - Terragrunt Apply'
+
 on:
   workflow_call:
     inputs:
@@ -19,16 +20,10 @@ on:
     secrets:
       GH_APP_ID:
         description: 'GitHub App ID for authentication'
-        required: false
+        required: true
       GH_APP_PRIVATE_KEY:
         description: 'GitHub App private key'
-        required: false
-      GH_APP_INSTALLATION_TOKEN_SALT:
-        description: 'Salt for GitHub App installation token'
-        required: false
-      GH_APP_TOKEN:
-        description: 'Pre-minted GitHub App token (alternative to App ID/Key)'
-        required: false
+        required: true
       AWS_OIDC_ROLE:
         description: 'AWS OIDC role ARN for authentication'
         required: false
@@ -55,47 +50,35 @@ jobs:
         with:
           path: stack
       
-      # Step 2: Mint or receive GitHub App token
+      # Step 2: Generate GitHub App token
       - name: Generate GitHub App token
-        id: github_token
-        run: |
-          if [[ -n "${{ secrets.GH_APP_TOKEN }}" ]]; then
-            echo "Using provided GitHub App token"
-            echo "token=${{ secrets.GH_APP_TOKEN }}" >> $GITHUB_OUTPUT
-          elif [[ -n "${{ secrets.GH_APP_ID }}" ]] && [[ -n "${{ secrets.GH_APP_PRIVATE_KEY }}" ]]; then
-            echo "Generating GitHub App token"
-            # TODO: Implement token generation logic here
-            echo "::error::GitHub App token generation not yet implemented"
-            exit 1
-          else
-            echo "::warning::No GitHub authentication provided"
-            echo "token=" >> $GITHUB_OUTPUT
-          fi
-      
-      # Step 3: Configure git authentication
-      - name: Configure git authentication
-        if: steps.github_token.outputs.token != ''
-        uses: ./stack/.github/actions/git-auth-github-app
+        id: app_token
+        uses: actions/create-github-app-token@v2
         with:
-          token: ${{ steps.github_token.outputs.token }}
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: honeyhiveai
+          repositories: 'honeyhive-terraform,tf-module-aws-iam,tf-module-aws-vpc,tf-module-aws-secrets-manager,tf-module-helm-argocd,tf-module-helm-karpenter,tf-module-helm-eso'
       
-      # Step 4: Checkout this catalog repo for overlays
+      # Step 3: Checkout catalog repository for overlays
       - name: Checkout catalog repository
-        if: inputs.overlay_ref != ''
         uses: actions/checkout@v4
         with:
           repository: honeyhiveai/honeyhive-workflows
           ref: ${{ inputs.overlay_ref }}
           path: _catalog
       
-      # Step 5: Setup Terraform and Terragrunt
+      # Step 4: Setup Terraform and Terragrunt
       - name: Setup Terragrunt
         uses: ./_catalog/actions/setup-terragrunt
-        if: inputs.overlay_ref != ''
+        with:
+          token: ${{ steps.app_token.outputs.token }}
       
-      - name: Setup Terragrunt (fallback)
-        if: inputs.overlay_ref == ''
-        uses: honeyhiveai/honeyhive-workflows/actions/setup-terragrunt@main
+      # Step 5: Configure git authentication
+      - name: Configure git authentication
+        uses: ./_catalog/actions/git-auth-github-app
+        with:
+          token: ${{ steps.app_token.outputs.token }}
       
       # Step 6: Configure AWS credentials
       - name: Configure AWS credentials
@@ -106,86 +89,60 @@ jobs:
           aws-region: us-west-2
           role-duration-seconds: 3600
       
-      # Step 7: Pre-apply validation
-      - name: Validate configuration
-        working-directory: stack/${{ inputs.stack_path }}
-        run: |
-          echo "## ✅ Pre-Apply Validation" >> $GITHUB_STEP_SUMMARY
-          
-          # Quick validation
-          if terragrunt validate; then
-            echo "Configuration is valid" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Validation failed" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
-      
-      # Step 8: Terragrunt init
-      - name: Terragrunt init
-        working-directory: stack/${{ inputs.stack_path }}
-        run: |
-          echo "## 🚀 Initializing Terragrunt" >> $GITHUB_STEP_SUMMARY
-          terragrunt run-all init --upgrade ${{ inputs.tg_args }}
-      
-      # Step 9: Terragrunt apply
-      - name: Terragrunt apply
-        id: apply
-        working-directory: stack/${{ inputs.stack_path }}
+      # Step 7: Initialize summary
+      - name: Initialize apply summary
         run: |
           echo "## 🚀 Terragrunt Apply" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Stack:** \`${{ inputs.stack_path }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
-          echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
-          # Run apply and capture output
-          set +e
-          terragrunt run-all apply -auto-approve ${{ inputs.tg_args }} 2>&1 | tee apply.log
-          APPLY_EXIT_CODE=$?
-          set -e
-          
-          # Process output for summary
-          if [[ $APPLY_EXIT_CODE -eq 0 ]]; then
-            echo "### ✅ Apply Successful" >> $GITHUB_STEP_SUMMARY
-            
-            # Extract resource counts if available
-            if grep -q "Apply complete!" apply.log; then
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              grep "Apply complete!" apply.log | tail -1 >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-            fi
-            
-            # Show any outputs
-            if grep -q "Outputs:" apply.log; then
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "### Outputs" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              sed -n '/Outputs:/,/^$/p' apply.log | head -20 >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "### ❌ Apply Failed" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Error details:" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -100 apply.log >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            exit $APPLY_EXIT_CODE
-          fi
       
-      # Step 10: Upload apply logs
-      - name: Upload apply logs
-        if: always()
-        uses: actions/upload-artifact@v4
+      # Step 8: Pre-apply validation
+      - name: Validate configuration
+        uses: gruntwork-io/terragrunt-action@v3
         with:
-          name: terragrunt-apply-${{ inputs.stack_path }}-${{ github.run_id }}
-          path: |
-            stack/${{ inputs.stack_path }}/apply.log
-            stack/${{ inputs.stack_path }}/.terragrunt-cache/**/*.log
-          retention-days: 30
+          tg_version: '0.66.9'
+          tg_dir: stack/${{ inputs.stack_path }}
+          tg_command: 'validate'
+          tg_add_approve: '0'
       
-      # Step 11: Post-apply validation
+      # Step 9: Terragrunt init
+      - name: Terragrunt init
+        uses: gruntwork-io/terragrunt-action@v3
+        with:
+          tg_version: '0.66.9'
+          tg_dir: stack/${{ inputs.stack_path }}
+          tg_command: 'run-all init --upgrade'
+          tg_add_approve: '0'
+      
+      # Step 10: Terragrunt apply
+      - name: Terragrunt apply
+        id: apply
+        uses: gruntwork-io/terragrunt-action@v3
+        with:
+          tg_version: '0.66.9'
+          tg_dir: stack/${{ inputs.stack_path }}
+          tg_command: 'run-all apply ${{ inputs.tg_args }}'
+          tg_add_approve: '1'
+          tg_comment: '1'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      
+      # Step 11: Apply summary
+      - name: Apply summary
+        if: always()
+        run: |
+          echo "### 📊 Apply Results" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ steps.apply.outcome }}" == "success" ]]; then
+            echo "✅ Apply completed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Apply failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[View full apply output](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+      
+      # Step 12: Post-apply validation
       - name: Post-apply validation
         if: success()
         working-directory: stack/${{ inputs.stack_path }}
@@ -200,36 +157,3 @@ jobs:
           else
             echo "⚠️ Unable to verify state" >> $GITHUB_STEP_SUMMARY
           fi
-      
-      # Step 12: Update PR/Issue (if applicable)
-      - name: Update PR comment
-        if: github.event_name == 'pull_request' && always()
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const status = '${{ steps.apply.outcome }}' === 'success' ? '✅ Success' : '❌ Failed';
-            const output = `### 🚀 Terragrunt Apply Results
-            
-            **Stack:** \`${{ inputs.stack_path }}\`
-            **Status:** ${status}
-            **Workflow:** ${{ github.run_id }}
-            **Applied by:** @${{ github.actor }}
-            **Timestamp:** ${new Date().toISOString()}
-            
-            [View full results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            });
-      
-      # Step 13: Send notification (placeholder)
-      - name: Send notification
-        if: always()
-        run: |
-          echo "TODO: Send notification to webhook/Slack/Teams"
-          echo "Status: ${{ steps.apply.outcome }}"
-          echo "Stack: ${{ inputs.stack_path }}"
