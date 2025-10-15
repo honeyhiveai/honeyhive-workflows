@@ -16,9 +16,6 @@ locals {
   service         = try(local.cfg.service, "unknown")  # Set by graph nodes via inputs
   deployment_type = try(local.cfg.deployment_type, "full_stack")
   
-  # Computed name prefix: org-env-sregion-deployment
-  name_prefix = "${local.org}-${local.env}-${local.sregion}-${local.deployment}"
-  
   # DEPLOYMENT TYPE CONFIGURATION MATRIX
   # Defines which services and features are included in each deployment type
   deployment_config = {
