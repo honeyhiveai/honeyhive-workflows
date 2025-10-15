@@ -29,6 +29,7 @@ terraform {
 }
 
 inputs = merge(local.cfg, {
+  environment = local.cfg.env  # Map env -> environment for Terraform modules
   layer              = "substrate"
   service            = "twingate"
   vpc_id             = dependency.vpc.outputs.vpc_id

@@ -33,6 +33,7 @@ terraform {
 }
 
 inputs = merge(local.cfg, {
+  environment = local.cfg.env  # Map env -> environment for Terraform modules
   layer                              = "hosting"
   service                            = "karpenter"
   cluster_name                       = dependency.cluster.outputs.cluster_name

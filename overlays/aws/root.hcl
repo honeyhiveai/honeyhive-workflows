@@ -8,6 +8,7 @@ locals {
   # Core variables from tenant configuration
   org             = local.cfg.org
   env             = local.cfg.env
+  environment     = local.cfg.env  # Terraform modules use 'environment', tenant.yaml uses 'env'
   sregion         = local.cfg.sregion
   region          = local.cfg.region
   deployment      = local.cfg.deployment
@@ -134,7 +135,7 @@ remote_state {
     key            = local.state_key
     region         = local.region
     encrypt        = true
-    dynamodb_table = "honeyhive-orchestration-terraform-state-lock"
+    dynamodb_table = "terraform-state-lock"
   }
   
   generate = {

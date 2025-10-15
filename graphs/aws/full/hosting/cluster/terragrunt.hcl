@@ -26,6 +26,7 @@ terraform {
 }
 
 inputs = merge(local.cfg, {
+  environment = local.cfg.env  # Map env -> environment for Terraform modules
   layer              = "hosting"
   service            = "cluster"
   vpc_id             = dependency.vpc.outputs.vpc_id

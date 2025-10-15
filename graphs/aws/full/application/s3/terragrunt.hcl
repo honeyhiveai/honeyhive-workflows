@@ -24,6 +24,7 @@ terraform {
 }
 
 inputs = merge(local.cfg, {
+  environment = local.cfg.env  # Map env -> environment for Terraform modules
   layer             = "application"
   service           = "s3"
   cluster_name      = dependency.cluster.outputs.cluster_name
