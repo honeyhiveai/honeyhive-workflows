@@ -135,7 +135,7 @@ remote_state {
     key            = local.state_key
     region         = local.region
     encrypt        = true
-    dynamodb_table = "terraform-state-lock"
+    dynamodb_table = "honeyhive-orchestration-terraform-state-lock"
   }
   
   generate = {
