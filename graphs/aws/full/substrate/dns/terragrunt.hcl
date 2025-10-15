@@ -20,7 +20,7 @@ dependency "vpc" {
 }
 
 terraform {
-  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//substrate/aws/dns?ref=v0.2.1"
+  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//substrate/aws/dns?ref=v0.2.2"
 }
 
 inputs = merge(local.cfg, {
