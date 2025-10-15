@@ -116,10 +116,6 @@ generate "provider" {
     provider "aws" {
       region = "${local.region}"
       
-      %{ if local.account_id != "" ~}
-      allowed_account_ids = ["${local.account_id}"]
-      %{ endif ~}
-      
       default_tags {
         tags = ${jsonencode(local.common_tags)}
       }
