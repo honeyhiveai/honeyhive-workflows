@@ -8,6 +8,10 @@ include "root" {
 locals {
   # Read tenant configuration from environment variable set by workflow
   cfg = yamldecode(file(get_env("TENANT_CONFIG_PATH")))
+  
+  # Define layer and service for this graph node (used in state key)
+  layer   = "substrate"
+  service = "vpc"
 }
 
 # Remote state configuration for this service
@@ -27,13 +31,14 @@ remote_state {
   }
 }
 
+
 terraform {
   source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//substrate/aws/vpc?ref=v0.2.7"
 }
 
 # Merge tenant config with layer/service overrides
 inputs = merge(local.cfg, {
-  layer   = "substrate"
-  service = "vpc"
+  layer   = local.layer
+  service = local.service
 })
 
