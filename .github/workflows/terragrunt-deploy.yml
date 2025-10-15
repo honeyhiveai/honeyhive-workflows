@@ -152,9 +152,9 @@ jobs:
           token: ${{ steps.app_token.outputs.token }}
       
       - name: Setup Terraform
-        uses:  autero1/action-terragrunt@v3
+        uses: autero1/action-terraform@v3
         with:
-          terraform_version: ${{ inputs.terraform_version }}
+          terraform-version: ${{ inputs.terraform_version }}
       
       - name: Setup Git credentials for Terraform
         run: |
