@@ -114,6 +114,7 @@ jobs:
         uses: gruntwork-io/terragrunt-action@v3
         with:
           tg_version: '0.66.9'
+          tf_path: terraform
           tg_dir: ${{ env.TG_GRAPH_DIR }}
           tg_command: 'hclfmt --check --diff'
           tg_add_approve: '0'
@@ -138,6 +139,7 @@ jobs:
         uses: gruntwork-io/terragrunt-action@v3
         with:
           tg_version: '0.66.9'
+          tf_path: terraform
           tg_dir: ${{ env.TG_GRAPH_DIR }}
           tg_command: 'run-all validate'
           tg_add_approve: '0'
@@ -195,6 +197,7 @@ jobs:
         uses: gruntwork-io/terragrunt-action@v3
         with:
           tg_version: '0.66.9'
+          tf_path: terraform
           tg_dir: ${{ env.TG_GRAPH_DIR }}
           tg_command: 'run-all init --terragrunt-include-external-dependencies'
           tg_add_approve: '0'
@@ -208,6 +211,7 @@ jobs:
         uses: gruntwork-io/terragrunt-action@v3
         with:
           tg_version: '0.66.9'
+          tf_path: terraform
           tg_dir: ${{ env.TG_GRAPH_DIR }}
           tg_command: 'run-all plan --terragrunt-include-external-dependencies ${{ inputs.tg_args }}'
           tg_add_approve: '0'
