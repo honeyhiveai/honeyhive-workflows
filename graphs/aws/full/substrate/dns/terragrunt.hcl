@@ -20,11 +20,10 @@ dependency "vpc" {
 }
 
 terraform {
-  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//substrate/aws/dns?ref=v0.2.4"
+  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//substrate/aws/dns?ref=v0.2.5"
 }
 
 inputs = merge(local.cfg, {
-  environment = local.cfg.env  # Map env -> environment for Terraform modules
   layer   = "substrate"
   service = "dns"
   vpc_id  = dependency.vpc.outputs.vpc_id

@@ -21,11 +21,10 @@ dependency "cluster" {
 }
 
 terraform {
-  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/pod_identities?ref=v0.2.4"
+  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/pod_identities?ref=v0.2.5"
 }
 
 inputs = merge(local.cfg, {
-  environment = local.cfg.env  # Map env -> environment for Terraform modules
   layer             = "hosting"
   service           = "pod_identities"
   cluster_name      = dependency.cluster.outputs.cluster_name

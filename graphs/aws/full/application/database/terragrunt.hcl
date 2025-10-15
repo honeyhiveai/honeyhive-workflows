@@ -29,11 +29,10 @@ dependency "cluster" {
 }
 
 terraform {
-  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//application/aws/database?ref=v0.2.4"
+  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//application/aws/database?ref=v0.2.5"
 }
 
 inputs = merge(local.cfg, {
-  environment = local.cfg.env  # Map env -> environment for Terraform modules
   layer                     = "application"
   service                   = "database"
   vpc_id                    = dependency.vpc.outputs.vpc_id

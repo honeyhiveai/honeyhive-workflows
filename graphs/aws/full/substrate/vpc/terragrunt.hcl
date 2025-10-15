@@ -11,12 +11,11 @@ locals {
 }
 
 terraform {
-  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//substrate/aws/vpc?ref=v0.2.4"
+  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//substrate/aws/vpc?ref=v0.2.5"
 }
 
 # Merge tenant config with layer/service overrides
 inputs = merge(local.cfg, {
-  environment = local.cfg.env  # Map env -> environment for Terraform modules
   layer       = "substrate"
   service     = "vpc"
 })
