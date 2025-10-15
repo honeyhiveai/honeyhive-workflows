@@ -122,22 +122,8 @@ generate "provider" {
   EOF
 }
 
-# Configure remote state backend
-# Key is overridden by each graph node
-remote_state {
-  backend = "s3"
-  config = {
-    bucket         = local.state_bucket
-    region         = local.region
-    encrypt        = true
-    dynamodb_table = "honeyhive-orchestration-terraform-state-lock"
-  }
-  
-  generate = {
-    path      = "backend.tf"
-    if_exists = "overwrite"
-  }
-}
+# Remote state is defined by each graph node with its specific key
+# Overlay provides state_bucket for graph nodes to use
 
 # Terraform version constraints
 terraform_version_constraint = ">= 1.9.0"
