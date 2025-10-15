@@ -9,6 +9,10 @@ include "root" {
 locals {
   cfg = yamldecode(file(get_env("TENANT_CONFIG_PATH")))
 }
+  
+  # Define layer and service for this graph node (used in state key)
+  layer   = local.layer
+  service = local.service
 
 # Skip if twingate feature is disabled
 # Deployment type defaults are documented but skip uses simple feature flag check
@@ -29,8 +33,8 @@ terraform {
 }
 
 inputs = merge(local.cfg, {
-  layer              = "substrate"
-  service            = "twingate"
+  layer   = local.layer
+  service = local.service
   vpc_id             = dependency.vpc.outputs.vpc_id
   private_subnet_ids = dependency.vpc.outputs.private_subnet_ids
 })

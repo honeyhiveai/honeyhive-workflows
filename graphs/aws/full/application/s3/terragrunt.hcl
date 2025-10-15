@@ -8,6 +8,10 @@ include "root" {
 locals {
   cfg = yamldecode(file(get_env("TENANT_CONFIG_PATH")))
 }
+  
+  # Define layer and service for this graph node (used in state key)
+  layer   = local.layer
+  service = local.service
 
 dependency "cluster" {
   config_path = "${get_repo_root()}/graphs/aws/full/hosting/cluster"
@@ -24,8 +28,8 @@ terraform {
 }
 
 inputs = merge(local.cfg, {
-  layer             = "application"
-  service           = "s3"
+  layer   = local.layer
+  service = local.service
   cluster_name      = dependency.cluster.outputs.cluster_name
   oidc_provider_arn = dependency.cluster.outputs.oidc_provider_arn
 })

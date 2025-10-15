@@ -11,8 +11,8 @@ locals {
   sregion         = local.cfg.sregion
   region          = local.cfg.region
   deployment      = local.cfg.deployment
-  layer           = try(local.cfg.layer, "unknown")  # Set by graph nodes via inputs
-  service         = try(local.cfg.service, "unknown")  # Set by graph nodes via inputs
+  layer           = try(local.layer, "unknown")  # Inherited from graph node locals
+  service         = try(local.service, "unknown")  # Inherited from graph node locals
   deployment_type = try(local.cfg.deployment_type, "full_stack")
   
   # DEPLOYMENT TYPE CONFIGURATION MATRIX

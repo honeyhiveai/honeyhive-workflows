@@ -8,6 +8,10 @@ include "root" {
 locals {
   cfg = yamldecode(file(get_env("TENANT_CONFIG_PATH")))
 }
+  
+  # Define layer and service for this graph node (used in state key)
+  layer   = local.layer
+  service = local.service
 
 dependency "vpc" {
   config_path = "${get_repo_root()}/graphs/aws/full/substrate/vpc"
@@ -33,8 +37,8 @@ terraform {
 }
 
 inputs = merge(local.cfg, {
-  layer                     = "application"
-  service                   = "database"
+  layer   = local.layer
+  service = local.service
   vpc_id                    = dependency.vpc.outputs.vpc_id
   private_subnet_ids        = dependency.vpc.outputs.private_subnet_ids
   cluster_security_group_id = dependency.cluster.outputs.cluster_security_group_id

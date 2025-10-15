@@ -9,6 +9,10 @@ include "root" {
 locals {
   cfg = yamldecode(file(get_env("TENANT_CONFIG_PATH")))
 }
+  
+  # Define layer and service for this graph node (used in state key)
+  layer   = local.layer
+  service = local.service
 
 # Skip if karpenter feature is disabled
 # Deployment type defaults are documented but skip uses simple feature flag check
@@ -33,8 +37,8 @@ terraform {
 }
 
 inputs = merge(local.cfg, {
-  layer                              = "hosting"
-  service                            = "karpenter"
+  layer   = local.layer
+  service = local.service
   cluster_name                       = dependency.cluster.outputs.cluster_name
   cluster_endpoint                   = dependency.cluster.outputs.cluster_endpoint
   cluster_version                    = dependency.cluster.outputs.cluster_version
