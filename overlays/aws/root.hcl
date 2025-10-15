@@ -150,9 +150,6 @@ terragrunt_version_constraint = ">= 0.66.0"
 # Prevent running Terragrunt in the wrong directory
 prevent_destroy = false
 
-# Skip outputs that don't exist
-skip_outputs = true
-
 # Input validation
 terraform {
   before_hook "validate_region" {
