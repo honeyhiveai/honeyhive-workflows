@@ -8,10 +8,13 @@ include "root" {
 locals {
   # Read tenant configuration from environment variable set by workflow
   cfg = yamldecode(file(get_env("TENANT_CONFIG_PATH")))
-  
-  # Define layer and service for this graph node (used in state key)
-  layer   = "substrate"
-  service = "vpc"
+}
+
+# Override remote_state key for this specific service
+remote_state {
+  config = {
+    key = "${local.cfg.org}/${local.cfg.env}/${local.cfg.sregion}/${local.cfg.deployment}/substrate/vpc/tfstate.json"
+  }
 }
 
 terraform {
@@ -20,7 +23,7 @@ terraform {
 
 # Merge tenant config with layer/service overrides
 inputs = merge(local.cfg, {
-  layer   = local.layer
-  service = local.service
+  layer   = "substrate"
+  service = "vpc"
 })
 

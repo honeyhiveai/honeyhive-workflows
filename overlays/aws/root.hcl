@@ -11,8 +11,6 @@ locals {
   sregion         = local.cfg.sregion
   region          = local.cfg.region
   deployment      = local.cfg.deployment
-  layer           = try(local.layer, "unknown")  # Inherited from graph node locals
-  service         = try(local.service, "unknown")  # Inherited from graph node locals
   deployment_type = try(local.cfg.deployment_type, "full_stack")
   
   # DEPLOYMENT TYPE CONFIGURATION MATRIX
@@ -79,6 +77,7 @@ locals {
   current_deployment = try(local.deployment_config[local.deployment_type], local.deployment_config["full_stack"])
   
   # Common tags to apply to all resources
+  # Layer and Service tags are set by graph nodes via inputs
   common_tags = merge(
     {
       Owner        = "honeyhive"
@@ -86,8 +85,6 @@ locals {
       Environment  = local.env
       Region       = local.region
       Deployment   = local.deployment
-      Service      = local.service
-      Layer        = local.layer
       ManagedBy    = "Terraform"
       Repository   = "https://github.com/honeyhiveai/honeyhive-terraform.git"
     },
@@ -96,9 +93,6 @@ locals {
   
   # State bucket configuration - allow override for BYOC
   state_bucket = try(local.cfg.state_bucket, "honeyhive-federated-${local.sregion}-state")
-  
-  # State key pattern - MUST match the specified format
-  state_key = "${local.org}/${local.env}/${local.sregion}/${local.deployment}/${local.layer}/${local.service}/tfstate.json"
   
   # Valid short region codes
   valid_regions = ["use1", "usw2", "euw1", "euc1", "apse4", "apse2"]
@@ -129,11 +123,11 @@ generate "provider" {
 }
 
 # Configure remote state backend
+# Key is overridden by each graph node
 remote_state {
   backend = "s3"
   config = {
     bucket         = local.state_bucket
-    key            = local.state_key
     region         = local.region
     encrypt        = true
     dynamodb_table = "honeyhive-orchestration-terraform-state-lock"
