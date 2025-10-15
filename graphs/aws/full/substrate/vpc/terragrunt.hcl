@@ -17,7 +17,6 @@ terraform {
 # Merge tenant config with layer/service overrides
 inputs = merge(local.cfg, {
   environment = local.cfg.env  # Map env -> environment for Terraform modules
-  environment = local.cfg.env  # Map env -> environment for Terraform modules
   layer       = "substrate"
   service     = "vpc"
 })
