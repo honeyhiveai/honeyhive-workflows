@@ -116,6 +116,11 @@ generate "provider" {
     provider "aws" {
       region = "${local.region}"
       
+      assume_role {
+        role_arn     = "arn:aws:iam::${local.account_id}:role/HoneyhiveProvisioner"
+        session_name = "terragrunt-${local.env}-${local.deployment}"
+      }
+      
       default_tags {
         tags = ${jsonencode(local.common_tags)}
       }
