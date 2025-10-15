@@ -22,11 +22,12 @@ dependency "vpc" {
 }
 
 terraform {
-  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/kubernetes/cluster?ref=v0.2.3"
+  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/kubernetes/cluster?ref=v0.2.4"
 }
 
 inputs = merge(local.cfg, {
-  environment = local.cfg.env  # Map env -> environment for Terraform modules
+  environment        = local.cfg.env  # Map env -> environment for Terraform modules
+  aws_account_id     = local.cfg.account_id  # Map account_id -> aws_account_id
   layer              = "hosting"
   service            = "cluster"
   vpc_id             = dependency.vpc.outputs.vpc_id

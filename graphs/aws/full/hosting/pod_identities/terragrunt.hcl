@@ -21,7 +21,7 @@ dependency "cluster" {
 }
 
 terraform {
-  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/pod_identities?ref=v0.2.3"
+  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/pod_identities?ref=v0.2.4"
 }
 
 inputs = merge(local.cfg, {
