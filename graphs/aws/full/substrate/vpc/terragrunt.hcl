@@ -12,6 +12,8 @@ locals {
 
 # Override remote_state key for this specific service
 remote_state {
+  backend = "s3"
+  backend = "s3"
   config = {
     key = "${local.cfg.org}/${local.cfg.env}/${local.cfg.sregion}/${local.cfg.deployment}/substrate/vpc/tfstate.json"
   }
