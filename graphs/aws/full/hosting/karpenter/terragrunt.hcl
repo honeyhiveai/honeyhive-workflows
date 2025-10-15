@@ -1,6 +1,6 @@
 # Karpenter - Kubernetes node autoscaling
 # Depends on: EKS Cluster (for OIDC provider, cluster name)
-# Optional: Deployed only if features.karpenter = true (default: enabled)
+# Optional: Deployed based on deployment_type and features.karpenter
 
 include "root" {
   path = "${get_repo_root()}/overlays/aws/root.hcl"
@@ -10,8 +10,13 @@ locals {
   cfg = yamldecode(file(get_env("TENANT_CONFIG_PATH")))
 }
 
-# Skip if karpenter feature is disabled
-skip = try(!local.cfg.features.karpenter, false)
+# Skip if:
+# 1. Not included in deployment type's hosting_services list, OR
+# 2. Feature disabled (checks tenant override, then deployment type default)
+skip = !(
+  contains(include.root.locals.current_deployment.hosting_services, "karpenter") && 
+  try(local.cfg.features.karpenter, include.root.locals.current_deployment.default_features.karpenter)
+)
 
 dependency "cluster" {
   config_path = "${get_repo_root()}/graphs/aws/full/hosting/cluster"

@@ -16,38 +16,52 @@ region: us-west-2
 # Deployment identifier (unique within org/env/region)
 deployment: dataplane-acme
 
+# Deployment type (full_stack, control_plane, data_plane, customer)
+deployment_type: full_stack
+
 # Infrastructure layer (substrate, hosting, application)
+# Note: Set by graph nodes automatically based on service
 layer: hosting
 
 # Service being deployed (vpc, eks, s3, database, etc.)
-service: eks
+# Note: Set by graph nodes automatically
+service: cluster
 
 # AWS account ID (optional, for validation)
 account_id: "123456789012"
 
-# Network configuration
-network:
-  cidr: 10.42.0.0/16
-  availability_zones:
-    - us-west-2a
-    - us-west-2b
-    - us-west-2c
-  private_subnets:
-    - 10.42.1.0/24
-    - 10.42.2.0/24
-    - 10.42.3.0/24
-  public_subnets:
-    - 10.42.101.0/24
-    - 10.42.102.0/24
-    - 10.42.103.0/24
+# VPC configuration
+vpc_cidr: 10.42.0.0/16
+
+# Subnet configuration (optional - sensible defaults)
+subnet_count: 3  # Number of AZs to use (default: 3)
+subnet_nat_strategy: per_az  # NAT strategy: none, single, per_az (default: single)
+
+# Optional: Explicitly specify AZs (otherwise uses first N AZs in region)
+# subnet_azs:
+#   - us-west-2a
+#   - us-west-2b
+#   - us-west-2c
+
+# Optional: Override auto-calculated subnet CIDRs
+# By default, VPC module auto-calculates:
+# - Public: /24 subnets (for /16 VPC)
+# - Private: /20 subnets (for /16 VPC)
+# subnet_public_cidrs: null
+# subnet_private_cidrs: null
 
 # Feature flags for optional components
-features:
-  karpenter: true  # Enabled by default for node management
-  external_secrets: true  # Enabled by default for secrets management
-  aws_load_balancer_controller: true  # Enabled by default for ingress
-  twingate: false  # VPN access (optional)
-  observability: false  # Monitoring stack (optional)
+# These are set by default based on deployment_type, but can be overridden here
+# Deployment type defaults:
+#   full_stack: all features enabled
+#   control_plane: karpenter=false, twingate=false (no node scaling, no VPN)
+#   data_plane: external_secrets=false, twingate=false, observability=false (minimal)
+#   customer: karpenter=false, twingate=false, observability=false (basic)
+
+# Optional: Override deployment type defaults
+# features:
+#   twingate: true  # Enable even if deployment_type defaults to false
+#   observability: false  # Disable even if deployment_type defaults to true
 
 # EKS cluster configuration (for hosting/kubernetes stacks)
 # Note: Node configuration is handled by Karpenter
@@ -81,5 +95,4 @@ tags:
   Compliance: GDPR
 
 # State bucket override (optional - defaults to honeyhive-federated-{sregion}-state)
-# Useful for BYOC scenarios where tenant manages their own state
 # state_bucket: acme-terraform-state-usw2
