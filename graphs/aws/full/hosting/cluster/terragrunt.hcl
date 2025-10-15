@@ -22,7 +22,7 @@ dependency "vpc" {
 }
 
 terraform {
-  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/kubernetes/cluster?ref=v0.2.5"
+  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/kubernetes/cluster?ref=v0.2.6"
 }
 
 inputs = merge(local.cfg, {

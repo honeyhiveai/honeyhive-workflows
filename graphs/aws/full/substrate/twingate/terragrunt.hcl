@@ -25,7 +25,7 @@ dependency "vpc" {
 }
 
 terraform {
-  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//substrate/aws/twingate?ref=v0.2.5"
+  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//substrate/aws/twingate?ref=v0.2.6"
 }
 
 inputs = merge(local.cfg, {
