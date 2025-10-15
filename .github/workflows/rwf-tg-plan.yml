@@ -141,7 +141,7 @@ jobs:
           tg_version: '0.91.0'
           tf_path: terraform
           tg_dir: ${{ env.TG_GRAPH_DIR }}
-          tg_command: 'run-all validate'
+          tg_command: 'run --all validate'
           tg_add_approve: '0'
         env:
           TENANT_CONFIG_PATH: ${{ env.TENANT_CONFIG_PATH }}
@@ -199,7 +199,7 @@ jobs:
           tg_version: '0.91.0'
           tf_path: terraform
           tg_dir: ${{ env.TG_GRAPH_DIR }}
-          tg_command: 'run-all init --terragrunt-include-external-dependencies'
+          tg_command: 'run --all init --queue-include-external'
           tg_add_approve: '0'
         env:
           TENANT_CONFIG_PATH: ${{ env.TENANT_CONFIG_PATH }}
@@ -213,7 +213,7 @@ jobs:
           tg_version: '0.91.0'
           tf_path: terraform
           tg_dir: ${{ env.TG_GRAPH_DIR }}
-          tg_command: 'run-all plan --terragrunt-include-external-dependencies ${{ inputs.tg_args }}'
+          tg_command: 'run --all plan --queue-include-external ${{ inputs.tg_args }}'
           tg_add_approve: '0'
           tg_comment: '1'
           github_token: ${{ secrets.GITHUB_TOKEN }}

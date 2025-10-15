@@ -134,7 +134,7 @@ jobs:
           echo "### 💾 State Backup" >> $GITHUB_STEP_SUMMARY
           
           # Initialize first
-          terragrunt run-all init --terragrunt-include-external-dependencies --terragrunt-non-interactive
+          terragrunt run --all init --queue-include-external --terragrunt-non-interactive
           
           echo "✅ State initialized" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -147,7 +147,7 @@ jobs:
           tg_version: '0.91.0'
           tf_path: terraform
           tg_dir: ${{ env.TG_GRAPH_DIR }}
-          tg_command: 'run-all plan -destroy --terragrunt-include-external-dependencies ${{ inputs.tg_args }}'
+          tg_command: 'run --all plan -destroy --queue-include-external ${{ inputs.tg_args }}'
           tg_add_approve: '0'
         env:
           TENANT_CONFIG_PATH: ${{ env.TENANT_CONFIG_PATH }}
@@ -161,7 +161,7 @@ jobs:
           tg_version: '0.91.0'
           tf_path: terraform
           tg_dir: ${{ env.TG_GRAPH_DIR }}
-          tg_command: 'run-all destroy --terragrunt-include-external-dependencies ${{ inputs.tg_args }}'
+          tg_command: 'run --all destroy --queue-include-external ${{ inputs.tg_args }}'
           tg_add_approve: '1'
           tg_comment: '1'
           github_token: ${{ secrets.GITHUB_TOKEN }}
