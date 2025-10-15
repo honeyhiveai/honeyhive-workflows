@@ -110,31 +110,6 @@ jobs:
           echo "**Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
       
-      # Step 8: Pre-apply validation
-      - name: Validate configuration
-        uses: gruntwork-io/terragrunt-action@v3
-        with:
-          tg_version: '0.91.0'
-          tf_path: terraform
-          tg_dir: ${{ env.TG_GRAPH_DIR }}
-          tg_command: 'run --all validate'
-          tg_add_approve: '0'
-        env:
-          TENANT_CONFIG_PATH: ${{ env.TENANT_CONFIG_PATH }}
-          TF_IN_AUTOMATION: 'true'
-      
-      # Step 9: Terragrunt init (with external dependencies)
-      - name: Terragrunt init
-        uses: gruntwork-io/terragrunt-action@v3
-        with:
-          tg_version: '0.91.0'
-          tf_path: terraform
-          tg_dir: ${{ env.TG_GRAPH_DIR }}
-          tg_command: 'run --all init --queue-include-external'
-          tg_add_approve: '0'
-        env:
-          TENANT_CONFIG_PATH: ${{ env.TENANT_CONFIG_PATH }}
-          TF_IN_AUTOMATION: 'true'
       
       # Step 10: Terragrunt apply (DAG-aware, auto-approve)
       - name: Terragrunt apply
