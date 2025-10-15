@@ -33,7 +33,7 @@ dependency "karpenter" {
 }
 
 terraform {
-  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/kubernetes/addons?ref=v1.0.0"
+  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/kubernetes/addons?ref=v0.1.3"
 }
 
 inputs = merge(local.cfg, {

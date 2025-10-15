@@ -11,7 +11,7 @@ locals {
 }
 
 terraform {
-  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//substrate/aws/vpc?ref=v1.0.0"
+  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//substrate/aws/vpc?ref=v0.1.3"
 }
 
 # Merge tenant config with layer/service overrides
