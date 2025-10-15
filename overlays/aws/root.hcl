@@ -11,8 +11,8 @@ locals {
   sregion         = local.cfg.sregion
   region          = local.cfg.region
   deployment      = local.cfg.deployment
-  layer           = local.cfg.layer
-  service         = local.cfg.service
+  layer           = try(local.cfg.layer, "unknown")  # Set by graph nodes via inputs
+  service         = try(local.cfg.service, "unknown")  # Set by graph nodes via inputs
   deployment_type = try(local.cfg.deployment_type, "full_stack")
   
   # DEPLOYMENT TYPE CONFIGURATION MATRIX
@@ -152,17 +152,6 @@ prevent_destroy = false
 
 # Skip outputs that don't exist
 skip_outputs = true
-
-# Retry configuration for transient errors
-retry_configuration {
-  retry_on_errors = [
-    "(?s).*Error creating.*: ResourceInUseException.*",
-    "(?s).*Error creating.*: ThrottlingException.*",
-    "(?s).*Error creating.*: RequestLimitExceeded.*"
-  ]
-  max_retry_attempts = 3
-  retry_sleep_base_seconds = 5
-}
 
 # Input validation
 terraform {
