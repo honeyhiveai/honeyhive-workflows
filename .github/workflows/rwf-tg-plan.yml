@@ -26,9 +26,6 @@ on:
       GH_APP_PRIVATE_KEY:
         description: 'GitHub App private key'
         required: true
-      AWS_OIDC_ROLE:
-        description: 'AWS OIDC role ARN for authentication'
-        required: false
 
 permissions:
   contents: read
@@ -85,7 +82,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          role-to-assume: ${{ vars.AWS_OIDC_ROLE }}
           aws-region: us-west-2
           role-duration-seconds: 3600
       
