@@ -119,7 +119,7 @@ jobs:
       - name: Terragrunt init
         uses: gruntwork-io/terragrunt-action@v3
         with:
-          tg_version: '0.66.9'
+          tg_version: '0.91.0'
           tf_path: terraform
           tg_dir: ${{ env.TG_GRAPH_DIR }}
           tg_command: 'run-all init --terragrunt-include-external-dependencies'
@@ -132,7 +132,7 @@ jobs:
       - name: Refresh state
         uses: gruntwork-io/terragrunt-action@v3
         with:
-          tg_version: '0.66.9'
+          tg_version: '0.91.0'
           tf_path: terraform
           tg_dir: ${{ env.TG_GRAPH_DIR }}
           tg_command: 'run-all refresh --terragrunt-include-external-dependencies'
@@ -146,7 +146,7 @@ jobs:
         id: drift
         uses: gruntwork-io/terragrunt-action@v3
         with:
-          tg_version: '0.66.9'
+          tg_version: '0.91.0'
           tf_path: terraform
           tg_dir: ${{ env.TG_GRAPH_DIR }}
           tg_command: 'run-all plan -detailed-exitcode --terragrunt-include-external-dependencies ${{ inputs.tg_args }}'
