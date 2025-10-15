@@ -119,6 +119,7 @@ generate "provider" {
       assume_role {
         role_arn     = "arn:aws:iam::${local.account_id}:role/HoneyhiveProvisioner"
         session_name = "terragrunt-${local.env}-${local.deployment}"
+        external_id  = "honeyhive-deployments-${local.env}"
       }
       
       default_tags {
