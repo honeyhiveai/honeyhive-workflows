@@ -10,6 +10,9 @@ locals {
   cfg = yamldecode(file(get_env("TENANT_CONFIG_PATH")))
 }
 
+# Skip if karpenter feature is disabled
+skip = !try(local.cfg.features.karpenter, true)
+
 # Remote state configuration for this service
 remote_state {
   backend = "s3"

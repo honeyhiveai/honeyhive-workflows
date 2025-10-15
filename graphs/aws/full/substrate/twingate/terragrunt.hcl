@@ -10,6 +10,9 @@ locals {
   cfg = yamldecode(file(get_env("TENANT_CONFIG_PATH")))
 }
 
+# Skip if twingate feature is disabled
+skip = !try(local.cfg.features.twingate, false)
+
 # Remote state configuration for this service
 remote_state {
   backend = "s3"
