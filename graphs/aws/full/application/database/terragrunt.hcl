@@ -29,7 +29,7 @@ dependency "cluster" {
 }
 
 terraform {
-  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//application/aws/database?ref=v0.2.2"
+  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//application/aws/database?ref=v0.2.3"
 }
 
 inputs = merge(local.cfg, {
