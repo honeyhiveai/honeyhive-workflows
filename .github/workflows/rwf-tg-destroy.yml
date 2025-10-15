@@ -27,9 +27,6 @@ on:
         required: true
         type: string
     secrets:
-      GH_APP_ID:
-        description: 'GitHub App ID for authentication'
-        required: true
       GH_APP_PRIVATE_KEY:
         description: 'GitHub App private key'
         required: true
@@ -73,7 +70,7 @@ jobs:
         id: app_token
         uses: actions/create-github-app-token@v2
         with:
-          app-id: ${{ secrets.GH_APP_ID }}
+          app-id: ${{ vars.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
           owner: honeyhiveai
           repositories: 'honeyhive-terraform,tf-module-aws-iam,tf-module-aws-vpc,tf-module-aws-secrets-manager,tf-module-helm-argocd,tf-module-helm-karpenter,tf-module-helm-eso'
