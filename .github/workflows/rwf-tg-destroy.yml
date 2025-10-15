@@ -144,7 +144,7 @@ jobs:
         id: plan_destroy
         uses: gruntwork-io/terragrunt-action@v3
         with:
-          tg_version: '0.66.9'
+          tg_version: '0.91.0'
           tf_path: terraform
           tg_dir: ${{ env.TG_GRAPH_DIR }}
           tg_command: 'run-all plan -destroy --terragrunt-include-external-dependencies ${{ inputs.tg_args }}'
@@ -158,7 +158,7 @@ jobs:
         id: destroy
         uses: gruntwork-io/terragrunt-action@v3
         with:
-          tg_version: '0.66.9'
+          tg_version: '0.91.0'
           tf_path: terraform
           tg_dir: ${{ env.TG_GRAPH_DIR }}
           tg_command: 'run-all destroy --terragrunt-include-external-dependencies ${{ inputs.tg_args }}'

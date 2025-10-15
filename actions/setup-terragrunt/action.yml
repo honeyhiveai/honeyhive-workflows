@@ -8,7 +8,7 @@ inputs:
   terragrunt_version:
     description: 'Terragrunt version to install'
     required: false
-    default: '0.66.9'
+    default: '0.91.0'
   token:
     description: 'GitHub token for authentication (optional)'
     required: false
