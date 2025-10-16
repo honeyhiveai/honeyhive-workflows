@@ -80,11 +80,7 @@ provider "aws" {
     }
   }
 }
-
-provider "aws" {
-  alias  = "orchestration"
-  region = "${local.region}"
-}
 EOF
 }
+
 
