@@ -1,17 +1,17 @@
 # Substrate Stack - Foundation networking and security layer
-# Dependencies are handled by dependency blocks in each unit's terragrunt.hcl
+# Path names must match what dependency blocks expect
 
 unit "vpc" {
   source = "../../../units/substrate/vpc-next"
-  path   = "vpc"
+  path   = "vpc-next"
 }
 
 unit "dns" {
   source = "../../../units/substrate/dns-next"
-  path   = "dns"
+  path   = "dns-next"
 }
 
 unit "twingate" {
   source = "../../../units/substrate/twingate-next"
-  path   = "twingate"
+  path   = "twingate-next"
 }
