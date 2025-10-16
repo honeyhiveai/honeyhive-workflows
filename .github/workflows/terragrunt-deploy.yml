@@ -237,6 +237,17 @@ jobs:
           
           if [ "$LAYER" == "all" ]; then
             terragrunt run-all init --terragrunt-non-interactive
+          elif [ "$LAYER" == "substrate" ]; then
+            # For substrate, run each module explicitly to avoid dependency issues
+            cd substrate
+            for module in vpc dns twingate; do
+              if [ -d "$module" ]; then
+                echo "Initializing $module..."
+                cd $module
+                terragrunt init --terragrunt-non-interactive || echo "Failed to init $module"
+                cd ..
+              fi
+            done
           else
             terragrunt run-all init --terragrunt-non-interactive \
               --terragrunt-include-dir "${LAYER}/**" \
@@ -259,6 +270,17 @@ jobs:
           
           if [ "$LAYER" == "all" ]; then
             terragrunt run-all plan --terragrunt-non-interactive
+          elif [ "$LAYER" == "substrate" ]; then
+            # For substrate, run each module explicitly in dependency order
+            cd substrate
+            for module in vpc dns twingate; do
+              if [ -d "$module" ]; then
+                echo "Planning $module..."
+                cd $module
+                terragrunt plan --terragrunt-non-interactive || echo "Failed to plan $module"
+                cd ..
+              fi
+            done
           else
             terragrunt run-all plan --terragrunt-non-interactive \
               --terragrunt-include-dir "${LAYER}/**" \
@@ -280,6 +302,17 @@ jobs:
           
           if [ "$LAYER" == "all" ]; then
             terragrunt run-all apply --terragrunt-non-interactive
+          elif [ "$LAYER" == "substrate" ]; then
+            # For substrate, run each module explicitly in dependency order
+            cd substrate
+            for module in vpc dns twingate; do
+              if [ -d "$module" ]; then
+                echo "Applying $module..."
+                cd $module
+                terragrunt apply --terragrunt-non-interactive || echo "Failed to apply $module"
+                cd ..
+              fi
+            done
           else
             terragrunt run-all apply --terragrunt-non-interactive \
               --terragrunt-include-dir "${LAYER}/**" \
@@ -303,6 +336,17 @@ jobs:
           
           if [ "$LAYER" == "all" ]; then
             terragrunt run-all destroy --terragrunt-non-interactive
+          elif [ "$LAYER" == "substrate" ]; then
+            # For substrate, destroy in reverse dependency order
+            cd substrate
+            for module in twingate dns vpc; do
+              if [ -d "$module" ]; then
+                echo "Destroying $module..."
+                cd $module
+                terragrunt destroy --terragrunt-non-interactive || echo "Failed to destroy $module"
+                cd ..
+              fi
+            done
           else
             terragrunt run-all destroy --terragrunt-non-interactive \
               --terragrunt-include-dir "${LAYER}/**" \
