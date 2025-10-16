@@ -29,7 +29,7 @@ remote_state {
 
 
 dependency "vpc" {
-  config_path = "../substrate/vpc"
+  config_path = "../../substrate/vpc"
 
   mock_outputs = {
     vpc_id             = "vpc-00000000"
@@ -39,7 +39,7 @@ dependency "vpc" {
 }
 
 dependency "cluster" {
-  config_path = "../hosting/cluster"
+  config_path = "../../hosting/cluster"
 
   mock_outputs = {
     cluster_security_group_id = "sg-00000000"
