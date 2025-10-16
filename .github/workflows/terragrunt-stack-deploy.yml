@@ -45,10 +45,15 @@ on:
         required: false
         type: boolean
         default: false
+      github_app_id:
+        description: 'GitHub App ID for authentication'
+        required: false
+        type: string
+        default: ''
     
     secrets:
       GITHUB_APP_ID:
-        required: true
+        required: false
       GITHUB_APP_PEM:
         required: true
       TWINGATE_API_TOKEN:
@@ -71,7 +76,7 @@ jobs:
         id: app-token
         uses: tibdex/github-app-token@v2
         with:
-          app_id: ${{ secrets.GITHUB_APP_ID }}
+          app_id: ${{ inputs.github_app_id || secrets.GITHUB_APP_ID }}
           private_key: ${{ secrets.GITHUB_APP_PEM }}
       
       - name: Checkout honeyhive-workflows
