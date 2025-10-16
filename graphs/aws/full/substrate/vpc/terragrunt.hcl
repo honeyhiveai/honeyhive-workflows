@@ -8,6 +8,6 @@ include "root" {
 locals {
   # Read tenant configuration from environment variable set by workflow
   cfg = yamldecode(file(get_env("TENANT_CONFIG_PATH")))
-  
-})
+
+}
 
