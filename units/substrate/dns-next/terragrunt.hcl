@@ -32,5 +32,6 @@ inputs = {
   service = "dns"
   
   vpc_id        = dependency.vpc.outputs.vpc_id
+  domain_name   = include.root.locals.cfg.domain_name
   dns_zone_name = try(include.root.locals.cfg.dns_zone_name, "${include.root.locals.deployment}.${include.root.locals.sregion}.${include.root.locals.env}.${include.root.locals.cfg.shortname}.${include.root.locals.cfg.domain_name}")
 }
