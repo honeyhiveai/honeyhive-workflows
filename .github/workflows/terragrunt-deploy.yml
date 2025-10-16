@@ -166,22 +166,30 @@ jobs:
         run: |
           CONFIG_FILE="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
           
-          echo "TG_BASE_VARS=$CONFIG_FILE" >> $GITHUB_ENV
+          echo "TENANT_CONFIG_PATH=$CONFIG_FILE" >> $GITHUB_ENV
           echo "TERRAFORM_REPO=${{ inputs.terraform_repo }}" >> $GITHUB_ENV
           echo "TERRAFORM_REF=${{ inputs.terraform_ref }}" >> $GITHUB_ENV
           echo "LAYER=${{ inputs.layer }}" >> $GITHUB_ENV
           echo "ACTION=${{ inputs.action }}" >> $GITHUB_ENV
           echo "AWS_ACCOUNT_ID=${{ steps.extract_config.outputs.account_id }}" >> $GITHUB_ENV
       
+      - name: Checkout honeyhive-workflows for graphs
+        uses: actions/checkout@v5
+        with:
+          repository: honeyhiveai/honeyhive-workflows
+          ref: ${{ github.ref_name }}  # Use the same branch/tag as the calling workflow
+          token: ${{ steps.app_token.outputs.token }}
+          path: workflow-repo
+      
       - name: Terragrunt Init
         run: |
-          # Clone honeyhive-terraform to work from (use absolute path to avoid nesting)
-          cd ${{ github.workspace }}
-          git clone --depth 1 --branch "${TERRAFORM_REF}" "https://x-access-token:${{ steps.app_token.outputs.token }}@github.com/${TERRAFORM_REPO}.git" terraform-repo
+          # Set up working directory in the graphs
+          cd ${{ github.workspace }}/workflow-repo/graphs/aws/full
           
-          cd terraform-repo
+          # Export the config path for Terragrunt to use
+          export TENANT_CONFIG_PATH="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
           
-          echo "📦 Initializing Terragrunt in terraform-repo/${LAYER}"
+          echo "📦 Initializing Terragrunt for ${LAYER} layer"
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## 🚀 Terragrunt Deployment" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -189,18 +197,24 @@ jobs:
           echo "- **AWS Account**: \`${{ steps.extract_config.outputs.account_id }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Layer**: \`${{ inputs.layer }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Action**: \`${{ inputs.action }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Terraform Repo**: \`${{ inputs.terraform_repo }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Terraform Ref**: \`${{ inputs.terraform_ref }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Terraform Modules Repo**: \`${{ inputs.terraform_repo }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Terraform Modules Ref**: \`${{ inputs.terraform_ref }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Update the Terraform module references to use the specified ref
+          find . -name "terragrunt.hcl" -type f -exec sed -i "s/?ref=v[0-9.]\+/?ref=${{ inputs.terraform_ref }}/g" {} +
           
           if [ "$LAYER" == "all" ]; then
             terragrunt run-all init --terragrunt-non-interactive
-          else
+          elif [ "$LAYER" == "substrate" ] || [ "$LAYER" == "hosting" ] || [ "$LAYER" == "application" ]; then
             cd "$LAYER"
             terragrunt run-all init --terragrunt-non-interactive
+          else
+            echo "::error::Invalid layer specified: $LAYER"
+            exit 1
           fi
         env:
-          TG_BASE_VARS: ${{ env.TG_BASE_VARS }}
+          TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
           TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
           SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
       
@@ -208,43 +222,49 @@ jobs:
         id: plan
         if: inputs.action == 'plan' || inputs.action == 'apply'
         run: |
-          cd terraform-repo
+          cd ${{ github.workspace }}/workflow-repo/graphs/aws/full
           
           echo "📋 Running plan in ${LAYER}..."
           
           if [ "$LAYER" == "all" ]; then
             terragrunt run-all plan --terragrunt-non-interactive
-          else
+          elif [ "$LAYER" == "substrate" ] || [ "$LAYER" == "hosting" ] || [ "$LAYER" == "application" ]; then
             cd "$LAYER"
             terragrunt run-all plan --terragrunt-non-interactive
+          else
+            echo "::error::Invalid layer specified: $LAYER"
+            exit 1
           fi
         env:
-          TG_BASE_VARS: ${{ env.TG_BASE_VARS }}
+          TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
           TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
           SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
       
       - name: Terragrunt Apply
         if: inputs.action == 'apply'
         run: |
-          cd terraform-repo
+          cd ${{ github.workspace }}/workflow-repo/graphs/aws/full
           
           echo "✅ Applying changes in ${LAYER}..."
           
           if [ "$LAYER" == "all" ]; then
             terragrunt run-all apply --terragrunt-non-interactive
-          else
+          elif [ "$LAYER" == "substrate" ] || [ "$LAYER" == "hosting" ] || [ "$LAYER" == "application" ]; then
             cd "$LAYER"
             terragrunt run-all apply --terragrunt-non-interactive
+          else
+            echo "::error::Invalid layer specified: $LAYER"
+            exit 1
           fi
         env:
-          TG_BASE_VARS: ${{ env.TG_BASE_VARS }}
+          TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
           TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
           SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
       
       - name: Terragrunt Destroy
         if: inputs.action == 'destroy'
         run: |
-          cd terraform-repo
+          cd ${{ github.workspace }}/workflow-repo/graphs/aws/full
           
           echo "⚠️ WARNING: Destroying infrastructure!"
           echo "Environment: ${{ inputs.environment }}"
@@ -252,12 +272,15 @@ jobs:
           
           if [ "$LAYER" == "all" ]; then
             terragrunt run-all destroy --terragrunt-non-interactive
-          else
+          elif [ "$LAYER" == "substrate" ] || [ "$LAYER" == "hosting" ] || [ "$LAYER" == "application" ]; then
             cd "$LAYER"
             terragrunt run-all destroy --terragrunt-non-interactive
+          else
+            echo "::error::Invalid layer specified: $LAYER"
+            exit 1
           fi
         env:
-          TG_BASE_VARS: ${{ env.TG_BASE_VARS }}
+          TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
           TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
           SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
       

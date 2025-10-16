@@ -34,7 +34,7 @@ remote_state {
 skip = !try(local.cfg.features.twingate, false)
 
 dependency "vpc" {
-  config_path = "${get_repo_root()}/graphs/aws/full/substrate/vpc"
+  config_path = "../vpc"
 
   mock_outputs = {
     vpc_id             = "vpc-00000000"
