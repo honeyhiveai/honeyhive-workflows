@@ -29,7 +29,7 @@ remote_state {
 
 
 dependency "cluster" {
-  config_path = "hosting/cluster"
+  config_path = "../cluster"
 
   mock_outputs = {
     cluster_name                       = "mock-cluster"
@@ -42,7 +42,7 @@ dependency "cluster" {
 }
 
 dependency "karpenter" {
-  config_path  = "hosting/karpenter"
+  config_path  = "../karpenter"
   skip_outputs = try(!include.root.locals.features.karpenter, false)
 
   mock_outputs = {
