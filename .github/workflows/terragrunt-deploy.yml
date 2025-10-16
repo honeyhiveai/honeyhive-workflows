@@ -207,8 +207,7 @@ jobs:
           if [ "$LAYER" == "all" ]; then
             terragrunt run-all init --terragrunt-non-interactive
           elif [ "$LAYER" == "substrate" ] || [ "$LAYER" == "hosting" ] || [ "$LAYER" == "application" ]; then
-            cd "$LAYER"
-            terragrunt run-all init --terragrunt-non-interactive
+            terragrunt run-all init --terragrunt-non-interactive --terragrunt-include-dir "${LAYER}/**"
           else
             echo "::error::Invalid layer specified: $LAYER"
             exit 1
@@ -230,8 +229,7 @@ jobs:
           if [ "$LAYER" == "all" ]; then
             terragrunt run-all plan --terragrunt-non-interactive
           elif [ "$LAYER" == "substrate" ] || [ "$LAYER" == "hosting" ] || [ "$LAYER" == "application" ]; then
-            cd "$LAYER"
-            terragrunt run-all plan --terragrunt-non-interactive
+            terragrunt run-all plan --terragrunt-non-interactive --terragrunt-include-dir "${LAYER}/**"
           else
             echo "::error::Invalid layer specified: $LAYER"
             exit 1
@@ -252,8 +250,7 @@ jobs:
           if [ "$LAYER" == "all" ]; then
             terragrunt run-all apply --terragrunt-non-interactive
           elif [ "$LAYER" == "substrate" ] || [ "$LAYER" == "hosting" ] || [ "$LAYER" == "application" ]; then
-            cd "$LAYER"
-            terragrunt run-all apply --terragrunt-non-interactive
+            terragrunt run-all apply --terragrunt-non-interactive --terragrunt-include-dir "${LAYER}/**"
           else
             echo "::error::Invalid layer specified: $LAYER"
             exit 1
@@ -276,8 +273,7 @@ jobs:
           if [ "$LAYER" == "all" ]; then
             terragrunt run-all destroy --terragrunt-non-interactive
           elif [ "$LAYER" == "substrate" ] || [ "$LAYER" == "hosting" ] || [ "$LAYER" == "application" ]; then
-            cd "$LAYER"
-            terragrunt run-all destroy --terragrunt-non-interactive
+            terragrunt run-all destroy --terragrunt-non-interactive --terragrunt-include-dir "${LAYER}/**"
           else
             echo "::error::Invalid layer specified: $LAYER"
             exit 1
