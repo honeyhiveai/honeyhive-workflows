@@ -42,7 +42,7 @@ dependency "cluster" {
 }
 
 dependency "karpenter" {
-  config_path  = "${get_repo_root()}/graphs/aws/full/hosting/karpenter"
+  config_path  = "../karpenter"
   skip_outputs = try(!local.cfg.features.karpenter, false)
 
   mock_outputs = {
