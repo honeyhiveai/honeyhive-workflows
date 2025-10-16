@@ -1,5 +1,5 @@
 # Substrate Stack - Foundation networking and security layer
-# This stack includes VPC, DNS, and Twingate (conditionally)
+# Dependencies are handled by dependency blocks in each unit's terragrunt.hcl
 
 unit "vpc" {
   source = "../../../units/substrate/vpc-next"
@@ -9,16 +9,9 @@ unit "vpc" {
 unit "dns" {
   source = "../../../units/substrate/dns-next"
   path   = "dns"
-  
-  # DNS depends on VPC
-  dependencies = [unit.vpc]
 }
 
 unit "twingate" {
   source = "../../../units/substrate/twingate-next"
   path   = "twingate"
-  
-  # Twingate depends on VPC
-  dependencies = [unit.vpc]
 }
-
