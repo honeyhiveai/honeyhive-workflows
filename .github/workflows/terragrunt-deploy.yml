@@ -196,7 +196,21 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "=== Substrate layer ===" >> $GITHUB_STEP_SUMMARY
           ls -la ${{ github.workspace }}/workflow-repo/graphs/aws/full/substrate/
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "=== Dependency graph (what Terragrunt sees) ===" >> $GITHUB_STEP_SUMMARY
+          cd ${{ github.workspace }}/workflow-repo/graphs/aws/full
+          terragrunt graph-dependencies --terragrunt-include-dir "substrate/**" || echo "Graph command failed"
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "=== DNS module dependency check ===" >> $GITHUB_STEP_SUMMARY
+          cd substrate/dns
+          echo "Current dir: $(pwd)"
+          echo "get_terragrunt_dir would be: $(pwd)"
+          echo "dirname of that: $(dirname $(pwd))"
+          echo "Looking for dependency at: $(dirname $(pwd))/vpc"
+          ls -la $(dirname $(pwd))/vpc/ || echo "VPC not found at expected location"
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        env:
+          TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
       
       - name: Terragrunt Init
         run: |
