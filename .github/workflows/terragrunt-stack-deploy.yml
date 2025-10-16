@@ -267,6 +267,13 @@ jobs:
           cd "$STACK_DIR"
           terragrunt stack run apply 2>&1 | tee apply.log
           
+          # Check for failures in the output
+          if grep -q "Failed\s\+[1-9]" apply.log || grep -q "ERROR" apply.log; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Stack deployment failed - check logs above**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ **Stack deployment completed successfully**" >> $GITHUB_STEP_SUMMARY
         env:
