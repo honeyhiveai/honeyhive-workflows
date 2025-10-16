@@ -89,6 +89,13 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           path: config-repo
       
+      - name: Setup Python Tools
+        uses: ./workflow-repo/actions/setup-python-tools
+        with:
+          python_version: '3.11'
+          requirements_file: workflow-repo/scripts/requirements.txt
+          cache_dependencies: 'true'
+      
       - name: Extract configuration
         id: extract_config
         run: |
@@ -99,12 +106,13 @@ jobs:
             exit 1
           fi
           
-          # Extract key values using yq
-          ACCOUNT_ID=$(yq eval '.account_id' "$CONFIG_FILE")
-          REGION=$(yq eval '.region' "$CONFIG_FILE")
-          SREGION=$(yq eval '.sregion' "$CONFIG_FILE")
-          ENVIRONMENT=$(yq eval '.env' "$CONFIG_FILE")
-          DEPLOYMENT=$(yq eval '.deployment' "$CONFIG_FILE")
+          # Extract key values using Python (more reliable than yq)
+          ACCOUNT_ID=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_FILE'))['account_id'])")
+          REGION=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_FILE'))['region'])")
+          SREGION=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_FILE'))['sregion'])")
+          ENVIRONMENT=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_FILE'))['env'])")
+          DEPLOYMENT=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_FILE'))['deployment'])")
+          DEPLOYMENT_TYPE=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_FILE')).get('deployment_type', 'full_stack'))")
           
           # Set outputs
           echo "account_id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
@@ -112,16 +120,19 @@ jobs:
           echo "sregion=$SREGION" >> $GITHUB_OUTPUT
           echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
           echo "deployment=$DEPLOYMENT" >> $GITHUB_OUTPUT
+          echo "deployment_type=$DEPLOYMENT_TYPE" >> $GITHUB_OUTPUT
           
-          # Display configuration summary
-          echo "### 📋 Configuration Summary" >> $GITHUB_STEP_SUMMARY
+          # Display configuration summary using select-stack.py for rich output
+          echo "### 📋 Configuration Analysis" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Environment**: \`${{ inputs.environment }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **AWS Account**: \`$ACCOUNT_ID\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Region**: \`$REGION\` (\`$SREGION\`)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Deployment**: \`$DEPLOYMENT\`" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          cd ${{ github.workspace }}/workflow-repo
+          ./scripts/select-stack.py "$CONFIG_FILE" | head -20 >> $GITHUB_STEP_SUMMARY || echo "Unable to analyze config"
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Stack**: \`${{ inputs.stack }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Action**: \`${{ inputs.action }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployment Type**: \`$DEPLOYMENT_TYPE\`" >> $GITHUB_STEP_SUMMARY
       
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4

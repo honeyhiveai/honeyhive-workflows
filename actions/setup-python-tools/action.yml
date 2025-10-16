@@ -1,0 +1,88 @@
+name: 'Setup Python Tools'
+description: 'Install Python and dependencies for workflow scripts'
+inputs:
+  python_version:
+    description: 'Python version to install'
+    required: false
+    default: '3.11'
+  requirements_file:
+    description: 'Path to requirements file'
+    required: false
+    default: 'scripts/requirements.txt'
+  cache_dependencies:
+    description: 'Cache pip dependencies'
+    required: false
+    default: 'true'
+outputs:
+  python-version:
+    description: 'The installed Python version'
+    value: ${{ steps.setup-python.outputs.python-version }}
+  cache-hit:
+    description: 'Whether the cache was hit'
+    value: ${{ steps.cache.outputs.cache-hit }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Python
+      id: setup-python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python_version }}
+        
+    - name: Cache pip packages
+      id: cache
+      if: inputs.cache_dependencies == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles(inputs.requirements_file) }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install Python dependencies
+      shell: bash
+      run: |
+        echo "📦 Installing Python dependencies..."
+        python -m pip install --upgrade pip
+        
+        # Check if requirements file exists
+        if [ -f "${{ inputs.requirements_file }}" ]; then
+          echo "Installing from ${{ inputs.requirements_file }}..."
+          pip install -r "${{ inputs.requirements_file }}"
+        else
+          echo "Requirements file not found, installing core dependencies..."
+          pip install pyyaml>=6.0 rich>=13.0
+        fi
+        
+        echo ""
+        echo "✅ Python dependencies installed successfully"
+        
+    - name: Verify installations
+      shell: bash
+      run: |
+        echo "🔍 Verifying Python setup..."
+        echo "Python version: $(python --version)"
+        echo ""
+        echo "Installed packages:"
+        python -c "import yaml; print(f'  ✓ PyYAML {yaml.__version__}')"
+        python -c "import rich; print(f'  ✓ Rich {rich.__version__}')"
+        echo ""
+        
+    - name: Add scripts to PATH
+      shell: bash
+      run: |
+        # Make scripts executable and add to PATH
+        SCRIPTS_DIR="${{ github.workspace }}/workflow-repo/scripts"
+        if [ -d "$SCRIPTS_DIR" ]; then
+          chmod +x "$SCRIPTS_DIR"/*.py 2>/dev/null || true
+          echo "$SCRIPTS_DIR" >> $GITHUB_PATH
+          echo "Added $SCRIPTS_DIR to PATH"
+        fi
+        
+        # Also check for scripts in the calling repo
+        CALLER_SCRIPTS="${{ github.workspace }}/scripts"
+        if [ -d "$CALLER_SCRIPTS" ]; then
+          chmod +x "$CALLER_SCRIPTS"/*.py 2>/dev/null || true
+          echo "$CALLER_SCRIPTS" >> $GITHUB_PATH
+          echo "Added $CALLER_SCRIPTS to PATH"
+        fi
