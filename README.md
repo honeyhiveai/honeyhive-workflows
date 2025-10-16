@@ -48,6 +48,7 @@ honeyhive-workflows/
 **Tenants only provide YAML configuration - zero Terragrunt files to manage!**
 
 1. **Create your tenant stack** in the apiary repository:
+
    ```
    apiary/{org}/{sregion}/
    └─ tenant.yaml      # Your configuration (that's it!)
@@ -118,12 +119,14 @@ Configures git to use GitHub App token for HTTPS authentication using git creden
 All workflows follow a consistent contract:
 
 ### Common Inputs
+
 - `stack_path` (required): Path to tenant YAML in caller repo (e.g., `acme/usw2`)
 - `graph` (optional): Graph to use from catalog (default: `aws/full`)
 - `overlay_ref` (optional): Version of this catalog to use (default: `main`)
 - `tg_args` (optional): Additional Terragrunt arguments
 
 ### Common Secrets
+
 - `GH_APP_ID`: GitHub App ID (required)
 - `GH_APP_PRIVATE_KEY`: GitHub App private key (required)
 - `AWS_OIDC_ROLE`: AWS role ARN for authentication (optional)
@@ -144,6 +147,7 @@ All workflows use [gruntwork-io/terragrunt-action](https://github.com/gruntwork-
 ### AWS Overlay (`overlays/aws/root.hcl`)
 
 Provides:
+
 - AWS provider configuration with default tags
 - S3 backend state configuration
 - Region validation
@@ -160,6 +164,7 @@ Stub implementation for future Azure support.
 ### What are Graphs?
 
 Graphs are pre-built Terragrunt dependency DAGs that define:
+
 - Which services get deployed
 - In what order (dependency resolution)
 - How data flows between layers (VPC ID, cluster OIDC, etc.)
@@ -170,17 +175,20 @@ Graphs are pre-built Terragrunt dependency DAGs that define:
 Complete AWS environment with all three layers:
 
 **Deployment Order:**
+
 1. **Substrate** → VPC (foundation) → DNS (depends on VPC) → Twingate (optional, depends on VPC)
 2. **Hosting** → Cluster (depends on VPC) → Karpenter (depends on Cluster) → Pod Identities (depends on Cluster) → Addons (depends on Cluster, Karpenter)
 3. **Application** → Database (depends on VPC, Cluster) → S3 (depends on Cluster)
 
 **How it Works:**
+
 - Each node reads `TENANT_CONFIG_PATH` (set by workflow)
 - Nodes use `dependency` blocks to consume outputs from other nodes
 - Terragrunt `run-all` executes in correct order automatically
 - Feature flags (`features.twingate`, `features.observability`) control optional services
 
 **Benefits:**
+
 - ✅ Tenants never manage dependencies
 - ✅ Consistent ordering across all deployments
 - ✅ Cross-layer data passing handled automatically
@@ -190,6 +198,7 @@ Complete AWS environment with all three layers:
 ## 🏷️ Tagging Strategy
 
 All resources are tagged with:
+
 - `Owner`: honeyhive
 - `Organization`: From tenant config
 - `Environment`: dev/test/stage/prod
@@ -207,12 +216,14 @@ All resources are tagged with:
 Required for accessing private Terraform modules. Token is generated automatically using [actions/create-github-app-token](https://github.com/actions/create-github-app-token).
 
 Required secrets:
+
 - `GH_APP_ID`: GitHub App ID
 - `GH_APP_PRIVATE_KEY`: Private key (PEM format)
 
 ### AWS OIDC Authentication
 
 Federated authentication without long-lived credentials:
+
 - Deploy `HoneyhiveProvisioner` role in tenant account
 - Trust central `HoneyhiveFederatedProvisioner` role
 - Pass role ARN as `AWS_OIDC_ROLE` secret
@@ -220,6 +231,7 @@ Federated authentication without long-lived credentials:
 ## 📊 State Management
 
 ### Default State Configuration
+
 - **Bucket**: `honeyhive-federated-{sregion}-state`
 - **Key**: `{org}/{env}/{sregion}/{deployment}/{layer}/{service}/tfstate.json`
 - **Region**: One bucket per region
@@ -229,6 +241,7 @@ Federated authentication without long-lived credentials:
 ### BYOC State Override
 
 Tenants can override the state bucket in their `tenant.yaml`:
+
 ```yaml
 state_bucket: my-custom-terraform-state-bucket
 ```
@@ -236,11 +249,13 @@ state_bucket: my-custom-terraform-state-bucket
 ## 🔄 Versioning
 
 This catalog follows semantic versioning:
+
 - **Major**: Breaking changes to workflow contracts
 - **Minor**: New features, backwards compatible
 - **Patch**: Bug fixes
 
 Pin to specific versions in your caller workflows:
+
 ```yaml
 uses: honeyhiveai/honeyhive-workflows/.github/workflows/rwf-tg-plan.yml@v1.2.3
 ```
@@ -248,6 +263,7 @@ uses: honeyhiveai/honeyhive-workflows/.github/workflows/rwf-tg-plan.yml@v1.2.3
 ## 📈 Workflow Pipeline Order
 
 Plan workflow execution order:
+
 1. **Parallel validation**: Format check | Configuration validate | Security scan (Checkov)
 2. **Fail fast**: Exit if validation fails
 3. **Sequential**: Terragrunt init → Terragrunt plan
@@ -256,6 +272,7 @@ Plan workflow execution order:
 ## 🚦 Concurrency Control
 
 Workflows use concurrency groups to prevent overlapping operations:
+
 ```yaml
 concurrency:
   group: tg-${{ inputs.stack_path }}
@@ -265,6 +282,7 @@ concurrency:
 ## 📝 Examples
 
 See the `examples/` directory for:
+
 - Complete tenant.yaml configuration
 - Terragrunt.hcl with overlay inclusion
 - Caller workflows for plan/apply/destroy/drift

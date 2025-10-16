@@ -362,11 +362,13 @@ environment:
 **Error**: `Could not download module: git@github.com: Permission denied`
 
 **Solution**:
+
 - Verify GitHub App credentials are correctly configured
 - Ensure `GH_APP_ID` and `GH_APP_PRIVATE_KEY` secrets are set
 - Token generation happens automatically using `actions/create-github-app-token@v2`
 
 Example:
+
 ```yaml
 secrets:
   GH_APP_ID: ${{ secrets.GH_APP_ID }}
@@ -378,8 +380,10 @@ secrets:
 **Error**: `Error acquiring the state lock`
 
 **Solution**:
+
 - Check for stuck workflows
 - Force unlock if necessary:
+
   ```bash
   terragrunt force-unlock <lock-id>
   ```
@@ -389,6 +393,7 @@ secrets:
 **Error**: `Cannot find file ${get_repo_root()}/_catalog/overlays/aws/root.hcl`
 
 **Solution**:
+
 ```yaml
 with:
   overlay_ref: v1.2.3  # Specify version
@@ -399,6 +404,7 @@ with:
 **Error**: `No valid credential sources found`
 
 **Solution**:
+
 - Verify OIDC role trust policy
 - Check role ARN in secrets
 - Ensure `id-token: write` permission
@@ -408,6 +414,7 @@ with:
 **Error**: `Resource already exists`
 
 **Solution**:
+
 - Concurrency groups prevent this
 - Check for manual changes
 - Run drift detection
@@ -432,6 +439,7 @@ with:
 ### 1. Version Pinning
 
 Always pin to specific versions:
+
 ```yaml
 uses: honeyhiveai/honeyhive-workflows/.github/workflows/rwf-tg-plan.yml@v1.2.3
 ```
@@ -439,6 +447,7 @@ uses: honeyhiveai/honeyhive-workflows/.github/workflows/rwf-tg-plan.yml@v1.2.3
 ### 2. Secret Management
 
 Use GitHub secrets, never hardcode:
+
 ```yaml
 secrets: inherit  # Inherit all secrets from caller
 ```
@@ -508,6 +517,7 @@ on:
 ### Environment Variables
 
 Set in workflows:
+
 - `TF_IN_AUTOMATION=1`
 - `TF_PLUGIN_CACHE_DIR=~/.terraform.d/plugin-cache`
 - `GITHUB_TOKEN` (automatic)
