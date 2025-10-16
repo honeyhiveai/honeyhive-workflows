@@ -181,6 +181,23 @@ jobs:
           token: ${{ steps.app_token.outputs.token }}
           path: workflow-repo
       
+      - name: DEBUG - Show actual directory structure
+        run: |
+          echo "## 🔍 Directory Structure Debug" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### GITHUB_WORKSPACE: ${{ github.workspace }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "=== Full workspace structure ===" >> $GITHUB_STEP_SUMMARY
+          tree -L 4 -d ${{ github.workspace }} || find ${{ github.workspace }} -maxdepth 4 -type d
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "=== Graph structure ===" >> $GITHUB_STEP_SUMMARY
+          ls -la ${{ github.workspace }}/workflow-repo/graphs/aws/full/
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "=== Substrate layer ===" >> $GITHUB_STEP_SUMMARY
+          ls -la ${{ github.workspace }}/workflow-repo/graphs/aws/full/substrate/
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+      
       - name: Terragrunt Init
         run: |
           # Set up working directory in the graphs
