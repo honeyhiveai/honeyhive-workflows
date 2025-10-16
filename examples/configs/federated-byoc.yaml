@@ -1,0 +1,182 @@
+# Federated BYOC (Bring Your Own Cloud) Configuration
+# Deploy HoneyHive in customer's AWS account with full data sovereignty
+
+# Core Configuration
+org: acmecorp  # Customer organization
+env: prod
+region: eu-west-1  # Customer's preferred region (data residency)
+sregion: euw1
+deployment: byoc-01
+account_id: "555666777888"  # CUSTOMER'S AWS account
+
+# CRITICAL: Set deployment type
+deployment_type: federated_byoc
+
+# Customer Networking Configuration
+vpc_cidr: 172.16.0.0/16  # Customer's CIDR range
+availability_zones:
+  - eu-west-1a
+  - eu-west-1b
+  - eu-west-1c
+nat_gateway_count: 3  # HA for production
+enable_vpc_endpoints: true  # Security requirement
+
+# Use existing VPC (optional)
+existing_vpc:
+  enabled: false  # Set to true if using customer's existing VPC
+  vpc_id: ""      # Provide if using existing
+  
+# Customer-defined subnets
+public_subnet_cidrs:
+  - 172.16.1.0/24
+  - 172.16.2.0/24
+  - 172.16.3.0/24
+private_subnet_cidrs:
+  - 172.16.10.0/24
+  - 172.16.11.0/24
+  - 172.16.12.0/24
+
+# DNS Configuration - customer domain
+domain_name: internal.acmecorp.com
+shortname: hh
+dns_zone_name: honeyhive.internal.acmecorp.com
+
+# Customer VPN Integration
+customer_vpn:
+  enabled: true
+  type: transit_gateway  # or direct_connect, site_to_site
+  transit_gateway_id: tgw-xxxxx  # Customer's TGW
+  
+# EKS Configuration - customer requirements
+eks_version: "1.30"  # Customer may require specific version
+cluster_endpoint_private_access: true
+cluster_endpoint_public_access: false  # Never public in BYOC
+enable_private_eks: true  # Fully private cluster
+
+# Node configuration - customer approved instances
+node_instance_types:  # Customer approved types only
+  - m5.xlarge
+  - m5.2xlarge
+node_min_size: 3
+node_max_size: 20
+node_desired_size: 5
+
+# BYOC Features (auto-set by deployment_type)
+# - customer_kms: true (use customer's encryption keys)
+# - compliance_controls: true (CloudTrail, Config, GuardDuty)
+# - data_residency: true (data never leaves region)
+# - network_isolation: true (PrivateLink only)
+
+# Customer KMS Configuration
+customer_kms:
+  enabled: true
+  create_new: false  # Use existing customer KMS keys
+  kms_key_arns:
+    ebs: "arn:aws:kms:eu-west-1:555666777888:key/xxx-xxx"
+    s3: "arn:aws:kms:eu-west-1:555666777888:key/yyy-yyy"
+    rds: "arn:aws:kms:eu-west-1:555666777888:key/zzz-zzz"
+    secrets: "arn:aws:kms:eu-west-1:555666777888:key/aaa-aaa"
+
+# Database Configuration - in customer account
+database:
+  create_new: true  # or use existing customer RDS
+  engine: postgres
+  engine_version: "15.4"
+  instance_class: db.r6i.xlarge
+  allocated_storage: 500
+  encrypted: true
+  kms_key_id: "arn:aws:kms:eu-west-1:555666777888:key/zzz-zzz"
+  backup_retention_period: 30  # Customer requirement
+  backup_window: "03:00-04:00"
+  maintenance_window: "sun:04:00-sun:05:00"
+  multi_az: true
+  deletion_protection: true  # Critical for customer data
+  
+  # Or use existing database
+  # existing_database:
+  #   enabled: true
+  #   endpoint: "database.internal.acmecorp.com"
+  #   port: 5432
+
+# S3 Configuration - customer buckets
+s3_buckets:
+  create_new: true
+  encryption: customer_managed  # Use customer KMS
+  versioning: true
+  lifecycle_policies_enabled: true
+  block_public_access: true
+  
+  # Bucket naming (follows customer standards)
+  bucket_prefix: "acmecorp-honeyhive"
+  
+# Compliance and Audit Controls
+compliance:
+  cloudtrail:
+    enabled: true
+    s3_bucket: "acmecorp-audit-logs"
+    include_global_events: true
+    enable_log_file_validation: true
+    
+  aws_config:
+    enabled: true
+    recording_group: all_supported
+    
+  guardduty:
+    enabled: true
+    finding_publishing_frequency: fifteen_minutes
+    
+  security_hub:
+    enabled: true
+    standards:
+      - cis-aws-foundations-benchmark
+      - aws-foundational-security-best-practices
+      - pci-dss
+
+# Network Isolation - PrivateLink endpoints
+privatelink:
+  enabled: true
+  honeyhive_services:
+    - service: api
+      endpoint: "com.amazonaws.vpce.honeyhive-api"
+    - service: metrics
+      endpoint: "com.amazonaws.vpce.honeyhive-metrics"
+
+# Cross-Account Access for HoneyHive Management
+cross_account_access:
+  enabled: true
+  honeyhive_org_id: "o-xxxxx"  # HoneyHive organization ID
+  external_id: "unique-external-id-xxxxx"  # Shared secret
+  
+  # Minimal permissions for management
+  management_role_name: "HoneyHiveManagementRole"
+  permissions_boundary: "arn:aws:iam::555666777888:policy/CustomerPermissionsBoundary"
+
+# Data Residency Configuration
+data_residency:
+  enforce_region: true
+  allowed_regions:
+    - eu-west-1  # Primary
+    - eu-west-2  # DR only
+  block_cross_region_replication: true
+  
+# Tags required by customer
+additional_tags:
+  CostCenter: "Engineering"
+  Project: "ML-Platform"
+  Compliance: "GDPR"
+  DataClassification: "Sensitive"
+  Environment: "Production"
+  ManagedBy: "HoneyHive"
+  Owner: "platform-team@acmecorp.com"
+
+# Customer notification preferences
+notifications:
+  email: "platform-team@acmecorp.com"
+  slack_webhook: "https://hooks.slack.com/services/xxx/yyy/zzz"
+  
+# Backup Configuration (customer requirements)
+backup:
+  enabled: true
+  retention_days: 90
+  cross_region_backup: false  # Data residency requirement
+  backup_vault: "acmecorp-backups"
