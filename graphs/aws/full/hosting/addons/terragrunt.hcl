@@ -43,7 +43,7 @@ dependency "cluster" {
 
 dependency "karpenter" {
   config_path  = "../karpenter"
-  skip_outputs = try(!local.cfg.features.karpenter, false)
+  skip_outputs = try(!include.root.locals.features.karpenter, false)
 
   mock_outputs = {
     karpenter_node_class_name = "default"

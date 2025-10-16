@@ -1,5 +1,19 @@
 # AWS Terragrunt Overlay - Federated BYOC Model
 # This overlay provides common configuration for all AWS-based Terragrunt stacks
+#
+# DEPLOYMENT TYPES & FEATURE DEFAULTS
+# ------------------------------------
+# Each deployment_type provides intelligent defaults for features, reducing configuration
+# overhead while allowing per-tenant customization for edge cases.
+#
+# Example:
+#   deployment_type: full_stack
+#   # Automatically enables: twingate, karpenter, external_secrets, alb_controller, observability
+#
+#   features:
+#     twingate: false  # Override: disable Twingate for this specific tenant
+#
+# This pattern is enterprise-grade: opinionated defaults with escape hatches.
 
 locals {
   # Extract configuration from tenant.yaml (via env var or local file)
@@ -75,6 +89,13 @@ locals {
 
   # Helper: Check if a service should be deployed based on deployment type
   current_deployment = try(local.deployment_config[local.deployment_type], local.deployment_config["full_stack"])
+
+  # Merge deployment type default features with user-provided overrides
+  # This allows deployment types to set intelligent defaults while permitting per-tenant customization
+  features = merge(
+    local.current_deployment.default_features,
+    try(local.cfg.features, {})
+  )
 
   # Common tags to apply to all resources
   # Layer and Service tags are set by graph nodes via inputs
