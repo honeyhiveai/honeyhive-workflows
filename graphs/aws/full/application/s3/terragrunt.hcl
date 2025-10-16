@@ -29,7 +29,7 @@ remote_state {
 
 
 dependency "cluster" {
-  config_path = "../../hosting/cluster"
+  config_path = "${dirname(dirname(get_terragrunt_dir()))}/hosting/cluster"
 
   mock_outputs = {
     cluster_name      = "mock-cluster"

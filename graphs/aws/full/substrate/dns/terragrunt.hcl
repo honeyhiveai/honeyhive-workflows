@@ -29,7 +29,7 @@ remote_state {
 
 
 dependency "vpc" {
-  config_path = "${get_parent_terragrunt_dir()}/vpc"
+  config_path = "${dirname(get_terragrunt_dir())}/vpc"
 
   # Mock outputs for initial plan before VPC exists
   mock_outputs = {
