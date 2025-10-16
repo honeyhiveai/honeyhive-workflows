@@ -205,6 +205,8 @@ jobs:
           terragrunt stack run init
         env:
           TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
+          TF_INPUT: 'false'
+          TF_IN_AUTOMATION: '1'
           TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
           SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
       
@@ -238,6 +240,8 @@ jobs:
           fi
         env:
           TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
+          TF_INPUT: 'false'
+          TF_IN_AUTOMATION: '1'
           TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
           SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
       
@@ -261,12 +265,14 @@ jobs:
           
           # Apply the stack changes
           cd "$STACK_DIR"
-          terragrunt stack run --terragrunt-non-interactive apply 2>&1 | tee apply.log
+          terragrunt stack run apply 2>&1 | tee apply.log
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ **Stack deployment completed successfully**" >> $GITHUB_STEP_SUMMARY
         env:
           TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
+          TF_INPUT: 'false'
+          TF_IN_AUTOMATION: '1'
           TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
           SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
       
@@ -292,12 +298,14 @@ jobs:
           
           # Destroy the stack
           cd "$STACK_DIR"
-          terragrunt stack run --terragrunt-non-interactive destroy 2>&1 | tee destroy.log
+          terragrunt stack run destroy 2>&1 | tee destroy.log
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ **Stack destruction completed**" >> $GITHUB_STEP_SUMMARY
         env:
           TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
+          TF_INPUT: 'false'
+          TF_IN_AUTOMATION: '1'
           TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
           SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
       
