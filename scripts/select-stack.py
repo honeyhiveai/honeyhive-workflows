@@ -2,7 +2,7 @@
 """
 Stack selector based on deployment type.
 Loads deployment type configurations from YAML files for maintainability.
-Uses rich for beautiful terminal output.
+Uses rich for beautiful terminal output and click for CLI.
 """
 
 import sys
@@ -11,6 +11,13 @@ import yaml
 from pathlib import Path
 from typing import Dict, Optional, Tuple, List
 import glob
+
+try:
+    import click
+except ImportError:
+    print("Error: 'click' library is not installed")
+    print("Install with: pip install click")
+    sys.exit(1)
 
 try:
     from rich.console import Console
@@ -27,7 +34,7 @@ try:
 except ImportError:
     print("Error: 'rich' library is not installed")
     print("Install with: pip install rich")
-    print("Or: pip install pyyaml rich")
+    print("Or: pip install pyyaml rich click")
     sys.exit(1)
 
 # Initialize rich console
@@ -47,14 +54,14 @@ class StackSelector:
         """Load all deployment type configurations from YAML files."""
         if not self.config_dir.exists():
             console.print(f"[red]❌ Error: Deployment configs directory not found:[/red] {self.config_dir}")
-            sys.exit(1)
+            raise click.ClickException(f"Config directory not found: {self.config_dir}")
         
         # Find all YAML config files
         config_files = list(self.config_dir.glob("*.yaml")) + list(self.config_dir.glob("*.yml"))
         
         if not config_files:
             console.print("[red]❌ Error: No deployment configuration files found[/red]")
-            sys.exit(1)
+            raise click.ClickException("No deployment configuration files found")
         
         # Load each config file
         with console.status("[bold green]Loading deployment configurations...") as status:
@@ -76,7 +83,7 @@ class StackSelector:
         
         if not self.deployment_stacks:
             console.print("[red]❌ Error: No valid deployment configurations loaded[/red]")
-            sys.exit(1)
+            raise click.ClickException("No valid deployment configurations loaded")
         
         console.print(f"[green]✓ Loaded {len(self.deployment_stacks)} deployment configurations[/green]")
     
@@ -92,7 +99,7 @@ class StackSelector:
         if deployment_type not in self.deployment_stacks:
             console.print(f"[red]❌ Error: Unknown deployment type: {deployment_type}[/red]")
             console.print(f"   Valid types: {', '.join(sorted(self.deployment_stacks.keys()))}")
-            sys.exit(1)
+            raise click.ClickException(f"Unknown deployment type: {deployment_type}")
         
         return deployment_type
     
@@ -319,14 +326,14 @@ def load_config(config_file: str) -> Dict:
             return config
     except FileNotFoundError:
         console.print(f"[red]❌ Error: Configuration file not found: {config_file}[/red]")
-        sys.exit(1)
+        raise click.ClickException(f"Configuration file not found: {config_file}")
     except yaml.YAMLError as e:
         console.print(f"[red]❌ Error: Invalid YAML in configuration file:[/red]")
         console.print(f"  {e}")
-        sys.exit(1)
+        raise click.ClickException("Invalid YAML in configuration file")
     except Exception as e:
         console.print(f"[red]❌ Error loading configuration: {e}[/red]")
-        sys.exit(1)
+        raise click.ClickException(f"Error loading configuration: {e}")
 
 def validate_config(config: Dict) -> Tuple[bool, List[str]]:
     """Validate the configuration has required fields."""
@@ -341,74 +348,83 @@ def validate_config(config: Dict) -> Tuple[bool, List[str]]:
         return False, missing_fields
     return True, []
 
-def show_help():
-    """Display help using rich."""
-    help_text = """
-# Stack Selector
-
-Choose the right Terragrunt stack based on deployment type.
-
-## Usage
-
-```bash
-./select-stack.py <config.yaml>    # Select stack for config
-./select-stack.py --list           # List all deployment types
-./select-stack.py --help           # Show this help
-```
-
-## Examples
-
-```bash
-./select-stack.py configs/test-usw2-app03.yaml
-./select-stack.py examples/configs/control-plane.yaml
-```
-
-## Configuration
-
-Deployment type configurations are loaded from:
-`stacks/deployment-types/configs/`
-
-Platform engineers can add or modify deployment types by editing
-the YAML files in this directory.
-"""
+@click.command(context_settings=dict(help_option_names=['-h', '--help']))
+@click.argument('config_file', type=click.Path(exists=True), required=False)
+@click.option('--list', 'list_types', is_flag=True, 
+              help='List all available deployment types')
+@click.option('--deployment-type', '-t', 
+              help='Override deployment type in config')
+@click.option('--export', '-e', is_flag=True,
+              help='Export environment variables for automation')
+@click.option('--json', 'output_json', is_flag=True,
+              help='Output in JSON format (for automation)')
+@click.option('--validate-only', is_flag=True,
+              help='Only validate the configuration without displaying')
+@click.option('--show-config-dir', is_flag=True,
+              help='Show the deployment configs directory path')
+@click.version_option(version='1.0.0', prog_name='Stack Selector')
+@click.pass_context
+def main(ctx, config_file, list_types, deployment_type, export, output_json, 
+         validate_only, show_config_dir):
+    """
+    Stack Selector - Choose the right Terragrunt stack based on deployment type.
     
-    md = Markdown(help_text)
-    console.print(Panel(md, title="Stack Selector Help", border_style="blue"))
-
-def main():
-    """Main function."""
-    # Initialize stack selector
-    selector = StackSelector()
+    This tool helps select and configure the appropriate Terragrunt stack
+    for different deployment scenarios (control plane, data plane, BYOC, etc.).
     
-    # Parse arguments
-    if len(sys.argv) < 2:
-        show_help()
-        selector.list_available_types()
-        console.print(f"\n[cyan]Configuration files loaded from: {selector.config_dir}[/cyan]")
-        sys.exit(0)
+    Examples:
     
-    if sys.argv[1] in ['-h', '--help']:
-        show_help()
-        console.print(f"\n[cyan]Configuration files loaded from: {selector.config_dir}[/cyan]")
-        sys.exit(0)
+        \b
+        # Select stack for a configuration
+        select-stack.py configs/production.yaml
+        
+        \b
+        # List all available deployment types
+        select-stack.py --list
+        
+        \b
+        # Override deployment type
+        select-stack.py configs/test.yaml --deployment-type control_plane
+        
+        \b
+        # Export environment variables
+        select-stack.py configs/prod.yaml --export
+        
+        \b
+        # Validate configuration only
+        select-stack.py configs/staging.yaml --validate-only
+    """
     
-    if sys.argv[1] == '--list':
+    # Initialize selector
+    try:
+        selector = StackSelector()
+    except click.ClickException:
+        ctx.exit(1)
+    
+    # Handle special options first
+    if show_config_dir:
+        console.print(f"[cyan]Configuration directory: {selector.config_dir}[/cyan]")
+        ctx.exit(0)
+    
+    if list_types:
         selector.list_available_types()
         console.print(f"\n[cyan]Configuration files loaded from: {selector.config_dir}[/cyan]")
         console.print(f"\n💡 [green]To add or modify deployment types, edit files in:[/green]")
         console.print(f"   {selector.config_dir}")
-        sys.exit(0)
+        ctx.exit(0)
     
-    config_file = sys.argv[1]
-    
-    # Check if file exists
-    if not Path(config_file).exists():
-        console.print(f"[red]❌ Error: Configuration file not found: {config_file}[/red]")
-        sys.exit(1)
+    # Require config file for other operations
+    if not config_file:
+        console.print("[red]Error: CONFIG_FILE is required unless using --list or --help[/red]")
+        console.print("\nUse --help for usage information")
+        ctx.exit(1)
     
     # Load configuration
     with console.status(f"[bold green]Loading configuration: {config_file}[/bold green]"):
-        config = load_config(config_file)
+        try:
+            config = load_config(config_file)
+        except click.ClickException:
+            ctx.exit(1)
     
     # Validate configuration
     valid, missing = validate_config(config)
@@ -416,10 +432,39 @@ def main():
         console.print("[red]❌ Error: Missing required fields in configuration:[/red]")
         for field in missing:
             console.print(f"   [red]• {field}[/red]")
-        sys.exit(1)
+        ctx.exit(1)
+    
+    # Override deployment type if specified
+    if deployment_type:
+        config['deployment_type'] = deployment_type
+        console.print(f"[yellow]⚠️  Overriding deployment type to: {deployment_type}[/yellow]")
     
     # Get deployment type
-    deployment_type = selector.get_deployment_type(config)
+    try:
+        deployment_type = selector.get_deployment_type(config)
+    except click.ClickException:
+        ctx.exit(1)
+    
+    # If validate-only, exit here
+    if validate_only:
+        console.print(f"[green]✅ Configuration is valid[/green]")
+        console.print(f"   Deployment type: {deployment_type}")
+        ctx.exit(0)
+    
+    # JSON output for automation
+    if output_json:
+        import json
+        stack_file = selector.get_stack_file(deployment_type)
+        output = {
+            'deployment_type': deployment_type,
+            'stack_file': stack_file,
+            'config_path': str(Path(config_file).absolute()),
+            'account_id': config.get('account_id'),
+            'region': config.get('region'),
+            'environment': config.get('env'),
+        }
+        console.print(json.dumps(output, indent=2))
+        ctx.exit(0)
     
     console.print()  # Add spacing
     
@@ -444,12 +489,20 @@ def main():
         console.print(success_panel)
     else:
         console.print(f"[red]❌ No stack file available for {deployment_type}[/red]")
-        sys.exit(1)
+        ctx.exit(1)
     
     console.print()  # Add spacing
     
     # Display commands
     selector.export_config(config_file, deployment_type)
+    
+    # If export flag is set, also print raw export commands
+    if export:
+        console.print()
+        console.print("[dim]# Copy and paste these commands:[/dim]")
+        console.print(f"export TENANT_CONFIG_PATH=\"{Path(config_file).absolute()}\"")
+        console.print(f"export SELECTED_STACK=\"{stack_file}\"")
+        console.print(f"export DEPLOYMENT_TYPE=\"{deployment_type}\"")
     
     console.print()  # Add spacing
     console.print("[bold green]✨ Ready to deploy![/bold green]")
