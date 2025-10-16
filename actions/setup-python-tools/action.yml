@@ -64,9 +64,9 @@ runs:
         echo "Python version: $(python --version)"
         echo ""
         echo "Installed packages:"
-        python -c "import yaml; print(f'  ✓ PyYAML {yaml.__version__}')"
-        python -c "import rich; print(f'  ✓ Rich {rich.__version__}')"
-        python -c "import click; print(f'  ✓ Click {click.__version__}')"
+        python -c "import yaml; print('  ✓ PyYAML')"
+        python -c "import rich; print('  ✓ Rich')"
+        python -c "import click; print('  ✓ Click')"
         echo ""
         
     - name: Add scripts to PATH
