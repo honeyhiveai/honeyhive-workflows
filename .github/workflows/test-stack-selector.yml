@@ -59,23 +59,7 @@ jobs:
           for config in stacks/deployment-types/configs/*.yaml; do
             if [ -f "$config" ]; then
               echo "Testing $(basename $config)..." 
-              python3 <<EOF || exit 1
-import yaml
-import sys
-try:
-    with open('$config', 'r') as f:
-        data = yaml.safe_load(f)
-        required = ['name', 'description', 'stack_file', 'components', 'features']
-        missing = [field for field in required if field not in data]
-        if missing:
-            print(f'  ❌ Missing fields: {missing}')
-            sys.exit(1)
-        else:
-            print(f'  ✅ Valid configuration')
-except Exception as e:
-    print(f'  ❌ Error: {e}')
-    sys.exit(1)
-EOF
+              python3 -c "import yaml, sys; f=open('$config'); data=yaml.safe_load(f); f.close(); req=['name','description','stack_file','components','features']; miss=[r for r in req if r not in data]; print(f'  ❌ Missing: {miss}' if miss else '  ✅ Valid'); sys.exit(1 if miss else 0)" || exit 1
               echo "- ✅ $(basename $config)" >> $GITHUB_STEP_SUMMARY
             fi
           done
