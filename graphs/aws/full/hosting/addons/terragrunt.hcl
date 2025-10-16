@@ -9,6 +9,9 @@ locals {
   cfg = yamldecode(file(get_env("TENANT_CONFIG_PATH")))
 }
 
+# Skip if deploying substrate only
+skip = try(get_env("DEPLOYMENT_LAYER") == "substrate", false)
+
 # Remote state configuration for this service
 remote_state {
   backend = "s3"
