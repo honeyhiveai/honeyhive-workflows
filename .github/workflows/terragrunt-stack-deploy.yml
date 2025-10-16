@@ -157,6 +157,12 @@ jobs:
           terraform_version: '1.9.8'
           terragrunt_version: '0.91.1'
       
+      - name: Setup Git credentials for Terraform
+        run: |
+          git config --global credential.helper store
+          echo "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com" > ~/.git-credentials
+          echo "✅ Git credentials configured for Terraform/Terragrunt module access"
+      
       - name: Initialize Stack
         run: |
           cd ${{ github.workspace }}/workflow-repo
