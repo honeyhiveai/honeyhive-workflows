@@ -261,7 +261,7 @@ jobs:
           
           # Apply the stack changes
           cd "$STACK_DIR"
-          terragrunt stack run apply -auto-approve 2>&1 | tee apply.log
+          terragrunt stack run -- apply -auto-approve 2>&1 | tee apply.log
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ **Stack deployment completed successfully**" >> $GITHUB_STEP_SUMMARY
@@ -292,7 +292,7 @@ jobs:
           
           # Destroy the stack
           cd "$STACK_DIR"
-          terragrunt stack run destroy -auto-approve 2>&1 | tee destroy.log
+          terragrunt stack run -- destroy -auto-approve 2>&1 | tee destroy.log
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ **Stack destruction completed**" >> $GITHUB_STEP_SUMMARY
