@@ -27,9 +27,6 @@ remote_state {
 }
 
   
-  # Define layer and service for this graph node (used in state key)
-  layer   = local.layer
-  service = local.service
 
 dependency "cluster" {
   config_path = "${get_repo_root()}/graphs/aws/full/hosting/cluster"
@@ -59,8 +56,8 @@ terraform {
 }
 
 inputs = merge(local.cfg, {
-  layer   = local.layer
-  service = local.service
+  layer   = "hosting"
+  service = "addons"
   cluster_name                       = dependency.cluster.outputs.cluster_name
   cluster_endpoint                   = dependency.cluster.outputs.cluster_endpoint
   cluster_version                    = dependency.cluster.outputs.cluster_version

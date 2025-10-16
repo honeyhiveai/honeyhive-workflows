@@ -28,9 +28,6 @@ remote_state {
 }
 
   
-  # Define layer and service for this graph node (used in state key)
-  layer   = local.layer
-  service = local.service
 
 # Skip if twingate feature is disabled
 # Deployment type defaults are documented but skip uses simple feature flag check
@@ -51,8 +48,8 @@ terraform {
 }
 
 inputs = merge(local.cfg, {
-  layer   = local.layer
-  service = local.service
+  layer              = "substrate"
+  service            = "twingate"
   vpc_id             = dependency.vpc.outputs.vpc_id
   private_subnet_ids = dependency.vpc.outputs.private_subnet_ids
 })

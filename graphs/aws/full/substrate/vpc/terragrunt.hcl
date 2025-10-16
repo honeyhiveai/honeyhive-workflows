@@ -9,36 +9,5 @@ locals {
   # Read tenant configuration from environment variable set by workflow
   cfg = yamldecode(file(get_env("TENANT_CONFIG_PATH")))
   
-  # Define layer and service for this graph node (used in state key)
-  layer   = "substrate"
-  service = "vpc"
-}
-
-# Remote state configuration for this service
-remote_state {
-  backend = "s3"
-  config = {
-    bucket         = try(local.cfg.state_bucket, "honeyhive-federated-${local.cfg.sregion}-state")
-    key            = "${local.cfg.org}/${local.cfg.env}/${local.cfg.sregion}/${local.cfg.deployment}/substrate/vpc/tfstate.json"
-    region         = local.cfg.region
-    encrypt        = true
-    dynamodb_table = "honeyhive-orchestration-terraform-state-lock"
-  }
-  
-  generate = {
-    path      = "backend.tf"
-    if_exists = "overwrite"
-  }
-}
-
-
-terraform {
-  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//substrate/aws/vpc?ref=v0.2.7"
-}
-
-# Merge tenant config with layer/service overrides
-inputs = merge(local.cfg, {
-  layer   = local.layer
-  service = local.service
 })
 
