@@ -29,9 +29,9 @@ remote_state {
 
 
 
-# Skip if karpenter feature is disabled
+# Skip if karpenter feature is disabled OR if deploying substrate only
 # Uses merged features from overlay (deployment type defaults + user overrides)
-skip = !try(include.root.locals.features.karpenter, true)
+skip = !try(include.root.locals.features.karpenter, true) || try(get_env("DEPLOYMENT_LAYER") == "substrate", false)
 
 dependency "cluster" {
   config_path = "${dirname(get_terragrunt_dir())}/cluster"

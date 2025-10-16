@@ -9,6 +9,9 @@ locals {
   cfg = yamldecode(file(get_env("TENANT_CONFIG_PATH")))
 }
 
+# Skip if not deploying application layer
+skip = try(get_env("DEPLOYMENT_LAYER") != "application" && get_env("DEPLOYMENT_LAYER") != "all", false)
+
 # Remote state configuration for this service
 remote_state {
   backend = "s3"
