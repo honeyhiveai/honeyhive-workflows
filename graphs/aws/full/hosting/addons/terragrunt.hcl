@@ -19,32 +19,32 @@ remote_state {
     encrypt        = true
     dynamodb_table = "honeyhive-orchestration-terraform-state-lock"
   }
-  
+
   generate = {
     path      = "backend.tf"
     if_exists = "overwrite"
   }
 }
 
-  
+
 
 dependency "cluster" {
   config_path = "${get_repo_root()}/graphs/aws/full/hosting/cluster"
-  
+
   mock_outputs = {
-    cluster_name              = "mock-cluster"
-    cluster_endpoint          = "https://mock.eks.amazonaws.com"
-    cluster_version           = "1.29"
-    oidc_provider_arn         = "arn:aws:iam::123456789012:oidc-provider/mock"
+    cluster_name                       = "mock-cluster"
+    cluster_endpoint                   = "https://mock.eks.amazonaws.com"
+    cluster_version                    = "1.29"
+    oidc_provider_arn                  = "arn:aws:iam::123456789012:oidc-provider/mock"
     cluster_certificate_authority_data = "LS0tLS1=="
   }
   mock_outputs_merge_strategy_with_state = "shallow"
 }
 
 dependency "karpenter" {
-  config_path = "${get_repo_root()}/graphs/aws/full/hosting/karpenter"
+  config_path  = "${get_repo_root()}/graphs/aws/full/hosting/karpenter"
   skip_outputs = try(!local.cfg.features.karpenter, false)
-  
+
   mock_outputs = {
     karpenter_node_class_name = "default"
   }
@@ -56,8 +56,8 @@ terraform {
 }
 
 inputs = merge(local.cfg, {
-  layer   = "hosting"
-  service = "addons"
+  layer                              = "hosting"
+  service                            = "addons"
   cluster_name                       = dependency.cluster.outputs.cluster_name
   cluster_endpoint                   = dependency.cluster.outputs.cluster_endpoint
   cluster_version                    = dependency.cluster.outputs.cluster_version

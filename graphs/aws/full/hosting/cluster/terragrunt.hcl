@@ -19,18 +19,18 @@ remote_state {
     encrypt        = true
     dynamodb_table = "honeyhive-orchestration-terraform-state-lock"
   }
-  
+
   generate = {
     path      = "backend.tf"
     if_exists = "overwrite"
   }
 }
 
-  
+
 
 dependency "vpc" {
   config_path = "${get_repo_root()}/graphs/aws/full/substrate/vpc"
-  
+
   mock_outputs = {
     vpc_id             = "vpc-00000000"
     vpc_cidr_block     = "10.0.0.0/16"
@@ -45,10 +45,10 @@ terraform {
 }
 
 inputs = merge(local.cfg, {
-  layer   = "hosting"
-  service = "cluster"
-  environment        = local.cfg.env  # Map env -> environment for Terraform modules
-  aws_account_id     = local.cfg.account_id  # Map account_id -> aws_account_id
+  layer              = "hosting"
+  service            = "cluster"
+  environment        = local.cfg.env        # Map env -> environment for Terraform modules
+  aws_account_id     = local.cfg.account_id # Map account_id -> aws_account_id
   vpc_id             = dependency.vpc.outputs.vpc_id
   vpc_cidr_block     = dependency.vpc.outputs.vpc_cidr_block
   private_subnet_ids = dependency.vpc.outputs.private_subnet_ids

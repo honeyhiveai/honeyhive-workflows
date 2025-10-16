@@ -19,18 +19,18 @@ remote_state {
     encrypt        = true
     dynamodb_table = "honeyhive-orchestration-terraform-state-lock"
   }
-  
+
   generate = {
     path      = "backend.tf"
     if_exists = "overwrite"
   }
 }
 
-  
+
 
 dependency "vpc" {
   config_path = "${get_repo_root()}/graphs/aws/full/substrate/vpc"
-  
+
   # Mock outputs for initial plan before VPC exists
   mock_outputs = {
     vpc_id = "vpc-00000000"

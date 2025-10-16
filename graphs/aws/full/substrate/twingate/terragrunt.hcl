@@ -20,14 +20,14 @@ remote_state {
     encrypt        = true
     dynamodb_table = "honeyhive-orchestration-terraform-state-lock"
   }
-  
+
   generate = {
     path      = "backend.tf"
     if_exists = "overwrite"
   }
 }
 
-  
+
 
 # Skip if twingate feature is disabled
 # Deployment type defaults are documented but skip uses simple feature flag check
@@ -35,7 +35,7 @@ skip = !try(local.cfg.features.twingate, false)
 
 dependency "vpc" {
   config_path = "${get_repo_root()}/graphs/aws/full/substrate/vpc"
-  
+
   mock_outputs = {
     vpc_id             = "vpc-00000000"
     private_subnet_ids = ["subnet-1", "subnet-2", "subnet-3"]

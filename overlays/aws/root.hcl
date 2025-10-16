@@ -4,7 +4,7 @@
 locals {
   # Extract configuration from tenant.yaml (via env var or local file)
   cfg = yamldecode(file(try(get_env("TENANT_CONFIG_PATH"), "${get_terragrunt_dir()}/tenant.yaml")))
-  
+
   # Core variables from tenant configuration
   org             = local.cfg.org
   env             = local.cfg.env
@@ -12,13 +12,13 @@ locals {
   region          = local.cfg.region
   deployment      = local.cfg.deployment
   deployment_type = try(local.cfg.deployment_type, "full_stack")
-  
+
   # DEPLOYMENT TYPE CONFIGURATION MATRIX
   # Defines which services and features are included in each deployment type
   deployment_config = {
     "full_stack" = {
-      substrate_services  = ["vpc", "dns", "twingate"]
-      hosting_services    = ["cluster", "karpenter", "pod_identities", "addons"]
+      substrate_services   = ["vpc", "dns", "twingate"]
+      hosting_services     = ["cluster", "karpenter", "pod_identities", "addons"]
       application_services = ["database", "s3"]
       default_features = {
         karpenter                    = true
@@ -29,10 +29,10 @@ locals {
       }
       description = "Complete platform deployment (control plane + data plane + ops)"
     }
-    
+
     "control_plane" = {
-      substrate_services  = ["vpc", "dns"]
-      hosting_services    = ["cluster", "pod_identities", "addons"]
+      substrate_services   = ["vpc", "dns"]
+      hosting_services     = ["cluster", "pod_identities", "addons"]
       application_services = []
       default_features = {
         karpenter                    = false
@@ -43,10 +43,10 @@ locals {
       }
       description = "Control plane only (API, dashboard, GitOps)"
     }
-    
+
     "data_plane" = {
-      substrate_services  = ["vpc", "dns"]
-      hosting_services    = ["cluster", "karpenter", "addons"]
+      substrate_services   = ["vpc", "dns"]
+      hosting_services     = ["cluster", "karpenter", "addons"]
       application_services = []
       default_features = {
         karpenter                    = true
@@ -57,10 +57,10 @@ locals {
       }
       description = "Data plane only (compute workloads, minimal features)"
     }
-    
+
     "customer" = {
-      substrate_services  = ["vpc", "dns"]
-      hosting_services    = ["cluster", "addons"]
+      substrate_services   = ["vpc", "dns"]
+      hosting_services     = ["cluster", "addons"]
       application_services = []
       default_features = {
         karpenter                    = false
@@ -72,10 +72,10 @@ locals {
       description = "LEGACY: Basic customer deployment"
     }
   }
-  
+
   # Helper: Check if a service should be deployed based on deployment type
   current_deployment = try(local.deployment_config[local.deployment_type], local.deployment_config["full_stack"])
-  
+
   # Common tags to apply to all resources
   # Layer and Service tags are set by graph nodes via inputs
   common_tags = merge(
@@ -90,13 +90,13 @@ locals {
     },
     try(local.cfg.tags, {})
   )
-  
+
   # State bucket configuration - allow override for BYOC
   state_bucket = try(local.cfg.state_bucket, "honeyhive-federated-${local.sregion}-state")
-  
+
   # Valid short region codes
   valid_regions = ["use1", "usw2", "euw1", "euc1", "apse4", "apse2"]
-  
+
   # AWS account ID (optional, for validation)
   account_id = try(local.cfg.account_id, "")
 }
@@ -126,7 +126,7 @@ generate "provider" {
 # Overlay provides state_bucket for graph nodes to use
 
 # Terraform version constraints
-terraform_version_constraint = ">= 1.9.0"
+terraform_version_constraint  = ">= 1.9.0"
 terragrunt_version_constraint = ">= 0.66.0"
 
 # Prevent running Terragrunt in the wrong directory
@@ -136,7 +136,7 @@ prevent_destroy = false
 terraform {
   before_hook "validate_region" {
     commands = ["plan", "apply", "destroy"]
-    execute  = ["bash", "-c", <<-SCRIPT
+    execute = ["bash", "-c", <<-SCRIPT
       SREGION="${local.sregion}"
       VALID_REGIONS="${join(" ", local.valid_regions)}"
       

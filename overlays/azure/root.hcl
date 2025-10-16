@@ -4,7 +4,7 @@
 locals {
   # Extract configuration from tenant.yaml
   cfg = yamldecode(file("${get_terragrunt_dir()}/tenant.yaml"))
-  
+
   # Core variables from tenant configuration
   org        = local.cfg.org
   env        = local.cfg.env
@@ -13,7 +13,7 @@ locals {
   deployment = local.cfg.deployment
   layer      = local.cfg.layer
   service    = local.cfg.service
-  
+
   # Common tags to apply to all resources
   common_tags = merge(
     {
@@ -69,7 +69,7 @@ generate "provider" {
 # }
 
 # Terraform version constraints
-terraform_version_constraint = ">= 1.9.0"
+terraform_version_constraint  = ">= 1.9.0"
 terragrunt_version_constraint = ">= 0.66.0"
 
 # Placeholder for Azure-specific configuration

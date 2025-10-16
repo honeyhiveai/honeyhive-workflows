@@ -19,18 +19,18 @@ remote_state {
     encrypt        = true
     dynamodb_table = "honeyhive-orchestration-terraform-state-lock"
   }
-  
+
   generate = {
     path      = "backend.tf"
     if_exists = "overwrite"
   }
 }
 
-  
+
 
 dependency "cluster" {
   config_path = "${get_repo_root()}/graphs/aws/full/hosting/cluster"
-  
+
   mock_outputs = {
     cluster_name      = "mock-cluster"
     oidc_provider_arn = "arn:aws:iam::123456789012:oidc-provider/mock"
@@ -44,8 +44,8 @@ terraform {
 }
 
 inputs = merge(local.cfg, {
-  layer   = "hosting"
-  service = "pod_identities"
+  layer             = "hosting"
+  service           = "pod_identities"
   cluster_name      = dependency.cluster.outputs.cluster_name
   oidc_provider_arn = dependency.cluster.outputs.oidc_provider_arn
   oidc_provider     = dependency.cluster.outputs.oidc_provider
