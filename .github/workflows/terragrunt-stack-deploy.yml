@@ -167,16 +167,16 @@ jobs:
           # Determine stack file based on input
           case "${{ inputs.stack }}" in
             substrate)
-              STACK_FILE="stacks/aws/substrate.stack.yaml"
+              STACK_DIR="stacks/aws/substrate"
               ;;
             hosting)
-              STACK_FILE="stacks/aws/hosting.stack.yaml"
+              STACK_DIR="stacks/aws/hosting"
               ;;
             application)
-              STACK_FILE="stacks/aws/application.stack.yaml"
+              STACK_DIR="stacks/aws/application"
               ;;
             full)
-              STACK_FILE="stacks/aws/full.stack.yaml"
+              STACK_DIR="stacks/aws/full"
               ;;
             *)
               echo "❌ Invalid stack: ${{ inputs.stack }}"
@@ -190,12 +190,13 @@ jobs:
           
           echo "### 🚀 Stack Deployment" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Using stack file: \`$STACK_FILE\`" >> $GITHUB_STEP_SUMMARY
+          echo "Using stack file: \`$STACK_DIR\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
-          # Initialize the stack
-          echo "Initializing stack..."
-          terragrunt stack init --stack "$STACK_FILE"
+          # Generate and initialize the stack
+          echo "Generating and initializing stack..."
+          cd "$STACK_DIR"
+          terragrunt stack run init
         env:
           TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
           TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
@@ -210,20 +211,18 @@ jobs:
           
           # Determine stack file
           case "${{ inputs.stack }}" in
-            substrate) STACK_FILE="stacks/aws/substrate.stack.yaml" ;;
-            hosting) STACK_FILE="stacks/aws/hosting.stack.yaml" ;;
-            application) STACK_FILE="stacks/aws/application.stack.yaml" ;;
-            full) STACK_FILE="stacks/aws/full.stack.yaml" ;;
+            substrate) STACK_DIR="stacks/aws/substrate" ;;
+            hosting) STACK_DIR="stacks/aws/hosting" ;;
+            application) STACK_DIR="stacks/aws/application" ;;
+            full) STACK_DIR="stacks/aws/full" ;;
           esac
           
           echo "### 📋 Planning Stack Changes" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           # Run plan for the stack
-          terragrunt stack plan --stack "$STACK_FILE" \
-            --terragrunt-non-interactive \
-            --terragrunt-parallelism 3 \
-            2>&1 | tee plan.log
+          cd "$STACK_DIR"
+          terragrunt stack run plan 2>&1 | tee plan.log
           
           # Extract summary from plan
           if grep -q "No changes" plan.log; then
@@ -245,21 +244,18 @@ jobs:
           
           # Determine stack file
           case "${{ inputs.stack }}" in
-            substrate) STACK_FILE="stacks/aws/substrate.stack.yaml" ;;
-            hosting) STACK_FILE="stacks/aws/hosting.stack.yaml" ;;
-            application) STACK_FILE="stacks/aws/application.stack.yaml" ;;
-            full) STACK_FILE="stacks/aws/full.stack.yaml" ;;
+            substrate) STACK_DIR="stacks/aws/substrate" ;;
+            hosting) STACK_DIR="stacks/aws/hosting" ;;
+            application) STACK_DIR="stacks/aws/application" ;;
+            full) STACK_DIR="stacks/aws/full" ;;
           esac
           
           echo "### ✅ Applying Stack Changes" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           # Apply the stack changes
-          terragrunt stack apply --stack "$STACK_FILE" \
-            --terragrunt-non-interactive \
-            --terragrunt-parallelism 3 \
-            --auto-approve \
-            2>&1 | tee apply.log
+          cd "$STACK_DIR"
+          terragrunt stack run apply -auto-approve 2>&1 | tee apply.log
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ **Stack deployment completed successfully**" >> $GITHUB_STEP_SUMMARY
@@ -277,10 +273,10 @@ jobs:
           
           # Determine stack file
           case "${{ inputs.stack }}" in
-            substrate) STACK_FILE="stacks/aws/substrate.stack.yaml" ;;
-            hosting) STACK_FILE="stacks/aws/hosting.stack.yaml" ;;
-            application) STACK_FILE="stacks/aws/application.stack.yaml" ;;
-            full) STACK_FILE="stacks/aws/full.stack.yaml" ;;
+            substrate) STACK_DIR="stacks/aws/substrate" ;;
+            hosting) STACK_DIR="stacks/aws/hosting" ;;
+            application) STACK_DIR="stacks/aws/application" ;;
+            full) STACK_DIR="stacks/aws/full" ;;
           esac
           
           echo "### 🗑️ Destroying Stack Resources" >> $GITHUB_STEP_SUMMARY
@@ -289,11 +285,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           
           # Destroy the stack
-          terragrunt stack destroy --stack "$STACK_FILE" \
-            --terragrunt-non-interactive \
-            --terragrunt-parallelism 1 \
-            --auto-approve \
-            2>&1 | tee destroy.log
+          cd "$STACK_DIR"
+          terragrunt stack run destroy -auto-approve 2>&1 | tee destroy.log
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ **Stack destruction completed**" >> $GITHUB_STEP_SUMMARY
