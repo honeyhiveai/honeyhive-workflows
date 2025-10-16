@@ -29,7 +29,7 @@ remote_state {
 
 
 dependency "vpc" {
-  config_path = "../vpc"
+  config_path = "${get_repo_root()}/graphs/aws/full/substrate/vpc"
 
   # Mock outputs for initial plan before VPC exists
   mock_outputs = {

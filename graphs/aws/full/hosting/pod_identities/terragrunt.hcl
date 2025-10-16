@@ -29,7 +29,7 @@ remote_state {
 
 
 dependency "cluster" {
-  config_path = "../../hosting/cluster"
+  config_path = "${get_repo_root()}/graphs/aws/full/hosting/cluster"
 
   mock_outputs = {
     cluster_name      = "mock-cluster"

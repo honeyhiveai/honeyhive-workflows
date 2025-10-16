@@ -34,7 +34,7 @@ remote_state {
 skip = !try(include.root.locals.features.karpenter, true)
 
 dependency "cluster" {
-  config_path = "../../hosting/cluster"
+  config_path = "${get_repo_root()}/graphs/aws/full/hosting/cluster"
 
   mock_outputs = {
     cluster_name                       = "mock-cluster"
