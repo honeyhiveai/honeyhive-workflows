@@ -114,15 +114,4 @@ jobs:
           echo "### 🐍 Python Import Check" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
-          python3 -c "
-import sys
-try:
-    import yaml
-    import rich
-    from rich.console import Console
-    from rich.table import Table
-    print('✅ All required imports successful')
-except ImportError as e:
-    print(f'❌ Import error: {e}')
-    sys.exit(1)
-          " >> $GITHUB_STEP_SUMMARY
+          python3 -c "import sys; exec('try:\n    import yaml, rich, click\n    from rich.console import Console\n    from rich.table import Table\n    print(\"✅ All required imports successful\")\nexcept ImportError as e:\n    print(f\"❌ Import error: {e}\")\n    sys.exit(1)')" >> $GITHUB_STEP_SUMMARY
