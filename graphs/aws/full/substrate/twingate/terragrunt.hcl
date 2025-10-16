@@ -34,7 +34,7 @@ remote_state {
 skip = !try(include.root.locals.features.twingate, false)
 
 dependency "vpc" {
-  config_path = "${get_repo_root()}/graphs/aws/full/substrate/vpc"
+  config_path = "${get_env("TERRAGRUNT_GRAPH_ROOT")}/substrate/vpc"
 
   mock_outputs = {
     vpc_id             = "vpc-00000000"
