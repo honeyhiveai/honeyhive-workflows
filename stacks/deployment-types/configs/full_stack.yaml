@@ -1,0 +1,30 @@
+name: full_stack
+description: Complete platform with all components
+stack_file: stacks/aws/full.stack.yaml
+components:
+  - substrate
+  - hosting
+  - application
+features:
+  - twingate
+  - monitoring
+  - argocd
+  - eso
+  - observability
+  - backup
+  - karpenter
+cluster_config:
+  node_instance_types:
+    - t3.xlarge
+    - t3.2xlarge
+  min_nodes: 3
+  max_nodes: 10
+  desired_nodes: 3
+subnet_config:
+  count: 3
+  nat_strategy: single
+  public_newbits: 7  # /24 from /16
+  private_newbits: 3  # /20 from /16
+tags:
+  Purpose: full-platform
+  Tier: production

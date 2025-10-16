@@ -1,0 +1,71 @@
+name: data-plane-stack
+description: Data Plane deployment - Compute workloads and processing
+terraform_binary: terraform
+
+# Stack configuration for data plane
+stack_configuration:
+  parallelism: 5
+  retry_max_attempts: 2
+  retry_sleep_interval_sec: 5
+
+# Data plane components - compute focused
+units:
+  # Substrate layer - foundation (no VPN needed)
+  - path: units/substrate/vpc-next
+    description: Virtual Private Cloud for compute
+    
+  - path: units/substrate/dns-next
+    description: Private DNS zone for service discovery
+    dependencies:
+      - units/substrate/vpc-next
+  
+  # NO Twingate - data plane accessed via control plane
+  
+  # Hosting layer - compute infrastructure
+  - path: units/hosting/cluster-next
+    description: EKS Kubernetes cluster (optimized for compute)
+    dependencies:
+      - units/substrate/vpc-next
+    
+  - path: units/hosting/karpenter-next
+    description: Auto-scaling for compute workloads (CRITICAL for data plane)
+    dependencies:
+      - units/hosting/cluster-next
+    
+  - path: units/hosting/addons-next
+    description: EKS cluster addons for data plane
+    dependencies:
+      - units/hosting/cluster-next
+      - units/hosting/karpenter-next
+    
+  - path: units/hosting/pod-identities-next
+    description: Pod identity for workload authentication
+    dependencies:
+      - units/hosting/cluster-next
+  
+  # Application layer - minimal for data plane
+  - path: units/application/s3-next
+    description: Data plane storage (temp files, processing)
+    dependencies:
+      - units/hosting/cluster-next
+  
+  # NO database for data plane - connects to control plane DB
+  
+  # Data plane specific units
+  - path: units/data-plane/gpu-nodes-next
+    description: GPU node configurations for ML workloads
+    dependencies:
+      - units/hosting/cluster-next
+      - units/hosting/karpenter-next
+    skip: ${get_env("SKIP_GPU_NODES", "true")}  # Only when GPU needed
+    
+  - path: units/data-plane/batch-compute-next
+    description: AWS Batch for large-scale processing
+    dependencies:
+      - units/substrate/vpc-next
+    skip: ${get_env("SKIP_BATCH", "true")}  # Optional batch processing
+    
+  - path: units/data-plane/observability-next
+    description: Local metrics and logging (ships to control plane)
+    dependencies:
+      - units/hosting/cluster-next

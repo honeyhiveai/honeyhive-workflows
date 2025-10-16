@@ -1,0 +1,307 @@
+name: 'Terragrunt Stack Deploy'
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Target environment (e.g., test-usw2-app03)'
+        required: true
+        type: string
+      stack:
+        description: 'Stack to deploy (substrate, hosting, application, or full)'
+        required: true
+        type: string
+      action:
+        description: 'Terragrunt action (plan, apply, destroy)'
+        required: true
+        type: string
+      config_repo:
+        description: 'Configuration repository'
+        required: false
+        type: string
+        default: 'honeyhiveai/apiary'
+      config_ref:
+        description: 'Configuration repository reference'
+        required: false
+        type: string
+        default: 'main'
+      config_path:
+        description: 'Path to configs in the repository'
+        required: false
+        type: string
+        default: 'configs'
+      terraform_repo:
+        description: 'Terraform modules repository'
+        required: false
+        type: string
+        default: 'honeyhiveai/honeyhive-terraform'
+      terraform_ref:
+        description: 'Terraform modules reference'
+        required: false
+        type: string
+        default: 'v0.2.7'
+      auto_approve:
+        description: 'Auto-approve applies and destroys'
+        required: false
+        type: boolean
+        default: false
+    
+    secrets:
+      GITHUB_APP_ID:
+        required: true
+      GITHUB_APP_PEM:
+        required: true
+      TWINGATE_API_TOKEN:
+        required: false
+      SLACK_TOKEN:
+        required: false
+
+jobs:
+  deploy:
+    name: 'Deploy ${{ inputs.stack }} Stack'
+    runs-on: ubuntu-latest
+    
+    permissions:
+      id-token: write  # For AWS OIDC authentication
+      contents: read   # For repository access
+      pull-requests: write  # For PR comments
+    
+    steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: tibdex/github-app-token@v2
+        with:
+          app_id: ${{ secrets.GITHUB_APP_ID }}
+          private_key: ${{ secrets.GITHUB_APP_PEM }}
+      
+      - name: Checkout honeyhive-workflows
+        uses: actions/checkout@v4
+        with:
+          repository: honeyhiveai/honeyhive-workflows
+          token: ${{ steps.app-token.outputs.token }}
+          path: workflow-repo
+      
+      - name: Checkout configuration repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.config_repo }}
+          ref: ${{ inputs.config_ref }}
+          token: ${{ steps.app-token.outputs.token }}
+          path: config-repo
+      
+      - name: Setup Python Tools
+        uses: ./workflow-repo/actions/setup-python-tools
+        with:
+          python_version: '3.11'
+          requirements_file: workflow-repo/scripts/requirements.txt
+          cache_dependencies: 'true'
+      
+      - name: Extract configuration
+        id: extract_config
+        run: |
+          CONFIG_FILE="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
+          
+          if [ ! -f "$CONFIG_FILE" ]; then
+            echo "❌ Configuration file not found: $CONFIG_FILE"
+            exit 1
+          fi
+          
+          # Extract key values using Python (more reliable than yq)
+          ACCOUNT_ID=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_FILE'))['account_id'])")
+          REGION=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_FILE'))['region'])")
+          SREGION=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_FILE'))['sregion'])")
+          ENVIRONMENT=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_FILE'))['env'])")
+          DEPLOYMENT=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_FILE'))['deployment'])")
+          DEPLOYMENT_TYPE=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_FILE')).get('deployment_type', 'full_stack'))")
+          
+          # Set outputs
+          echo "account_id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
+          echo "region=$REGION" >> $GITHUB_OUTPUT
+          echo "sregion=$SREGION" >> $GITHUB_OUTPUT
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+          echo "deployment=$DEPLOYMENT" >> $GITHUB_OUTPUT
+          echo "deployment_type=$DEPLOYMENT_TYPE" >> $GITHUB_OUTPUT
+          
+          # Display configuration summary using select-stack.py for rich output
+          echo "### 📋 Configuration Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          cd ${{ github.workspace }}/workflow-repo
+          ./scripts/select-stack.py "$CONFIG_FILE" | head -20 >> $GITHUB_STEP_SUMMARY || echo "Unable to analyze config"
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Stack**: \`${{ inputs.stack }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Action**: \`${{ inputs.action }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployment Type**: \`$DEPLOYMENT_TYPE\`" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::839515361289:role/GitHubActionsRole
+          role-session-name: terragrunt-stack-${{ github.run_id }}
+          aws-region: ${{ steps.extract_config.outputs.region }}
+      
+      - name: Setup Terragrunt
+        uses: ./workflow-repo/actions/setup-terragrunt
+        with:
+          terraform_version: '1.9.8'
+          terragrunt_version: '0.91.1'
+      
+      - name: Initialize Stack
+        run: |
+          cd ${{ github.workspace }}/workflow-repo
+          
+          # Export configuration path for units to access
+          export TENANT_CONFIG_PATH="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
+          
+          # Determine stack file based on input
+          case "${{ inputs.stack }}" in
+            substrate)
+              STACK_FILE="stacks/aws/substrate.stack.yaml"
+              ;;
+            hosting)
+              STACK_FILE="stacks/aws/hosting.stack.yaml"
+              ;;
+            application)
+              STACK_FILE="stacks/aws/application.stack.yaml"
+              ;;
+            full)
+              STACK_FILE="stacks/aws/full.stack.yaml"
+              ;;
+            *)
+              echo "❌ Invalid stack: ${{ inputs.stack }}"
+              exit 1
+              ;;
+          esac
+          
+          # Update Terraform module references to use specified version
+          find units/ -name "terragrunt.hcl" -type f -exec \
+            sed -i "s/?ref=v[0-9.]\+/?ref=${{ inputs.terraform_ref }}/g" {} +
+          
+          echo "### 🚀 Stack Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Using stack file: \`$STACK_FILE\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Initialize the stack
+          echo "Initializing stack..."
+          terragrunt stack init --stack "$STACK_FILE"
+        env:
+          TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
+          TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+      
+      - name: Terragrunt Plan
+        if: inputs.action == 'plan' || (inputs.action != 'destroy' && !inputs.auto_approve)
+        run: |
+          cd ${{ github.workspace }}/workflow-repo
+          
+          export TENANT_CONFIG_PATH="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
+          
+          # Determine stack file
+          case "${{ inputs.stack }}" in
+            substrate) STACK_FILE="stacks/aws/substrate.stack.yaml" ;;
+            hosting) STACK_FILE="stacks/aws/hosting.stack.yaml" ;;
+            application) STACK_FILE="stacks/aws/application.stack.yaml" ;;
+            full) STACK_FILE="stacks/aws/full.stack.yaml" ;;
+          esac
+          
+          echo "### 📋 Planning Stack Changes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Run plan for the stack
+          terragrunt stack plan --stack "$STACK_FILE" \
+            --terragrunt-non-interactive \
+            --terragrunt-parallelism 3 \
+            2>&1 | tee plan.log
+          
+          # Extract summary from plan
+          if grep -q "No changes" plan.log; then
+            echo "✅ **No changes required** - Infrastructure is up-to-date" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "🔄 **Changes detected** - Review the plan output above" >> $GITHUB_STEP_SUMMARY
+          fi
+        env:
+          TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
+          TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+      
+      - name: Terragrunt Apply
+        if: inputs.action == 'apply' && inputs.auto_approve
+        run: |
+          cd ${{ github.workspace }}/workflow-repo
+          
+          export TENANT_CONFIG_PATH="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
+          
+          # Determine stack file
+          case "${{ inputs.stack }}" in
+            substrate) STACK_FILE="stacks/aws/substrate.stack.yaml" ;;
+            hosting) STACK_FILE="stacks/aws/hosting.stack.yaml" ;;
+            application) STACK_FILE="stacks/aws/application.stack.yaml" ;;
+            full) STACK_FILE="stacks/aws/full.stack.yaml" ;;
+          esac
+          
+          echo "### ✅ Applying Stack Changes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Apply the stack changes
+          terragrunt stack apply --stack "$STACK_FILE" \
+            --terragrunt-non-interactive \
+            --terragrunt-parallelism 3 \
+            --auto-approve \
+            2>&1 | tee apply.log
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Stack deployment completed successfully**" >> $GITHUB_STEP_SUMMARY
+        env:
+          TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
+          TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+      
+      - name: Terragrunt Destroy
+        if: inputs.action == 'destroy' && inputs.auto_approve
+        run: |
+          cd ${{ github.workspace }}/workflow-repo
+          
+          export TENANT_CONFIG_PATH="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
+          
+          # Determine stack file
+          case "${{ inputs.stack }}" in
+            substrate) STACK_FILE="stacks/aws/substrate.stack.yaml" ;;
+            hosting) STACK_FILE="stacks/aws/hosting.stack.yaml" ;;
+            application) STACK_FILE="stacks/aws/application.stack.yaml" ;;
+            full) STACK_FILE="stacks/aws/full.stack.yaml" ;;
+          esac
+          
+          echo "### 🗑️ Destroying Stack Resources" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **WARNING**: Destroying infrastructure resources" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Destroy the stack
+          terragrunt stack destroy --stack "$STACK_FILE" \
+            --terragrunt-non-interactive \
+            --terragrunt-parallelism 1 \
+            --auto-approve \
+            2>&1 | tee destroy.log
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Stack destruction completed**" >> $GITHUB_STEP_SUMMARY
+        env:
+          TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
+          TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+      
+      - name: Stack Output Summary
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow**: Stack Deploy" >> $GITHUB_STEP_SUMMARY
+          echo "- **Stack**: ${{ inputs.stack }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Action**: ${{ inputs.action }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run ID**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY

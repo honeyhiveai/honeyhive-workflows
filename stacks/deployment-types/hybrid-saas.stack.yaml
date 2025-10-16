@@ -1,0 +1,74 @@
+name: hybrid-saas-stack
+description: Hybrid SaaS deployment - Control plane in HoneyHive cloud, Data plane in customer cloud
+terraform_binary: terraform
+
+# Stack configuration for hybrid deployment
+stack_configuration:
+  parallelism: 4
+  retry_max_attempts: 2
+  retry_sleep_interval_sec: 5
+
+# Hybrid model - data plane only in customer account
+units:
+  # Substrate layer - customer networking
+  - path: units/substrate/vpc-next
+    description: VPC in customer account for data plane
+    
+  - path: units/substrate/dns-next
+    description: Private DNS zone
+    dependencies:
+      - units/substrate/vpc-next
+  
+  # Hosting layer - data plane compute
+  - path: units/hosting/cluster-next
+    description: EKS cluster for customer workloads
+    dependencies:
+      - units/substrate/vpc-next
+    
+  - path: units/hosting/karpenter-next
+    description: Auto-scaling for workloads
+    dependencies:
+      - units/hosting/cluster-next
+    
+  - path: units/hosting/addons-next
+    description: EKS addons
+    dependencies:
+      - units/hosting/cluster-next
+      - units/hosting/karpenter-next
+    
+  - path: units/hosting/pod-identities-next
+    description: Workload authentication
+    dependencies:
+      - units/hosting/cluster-next
+  
+  # Application layer - customer data only
+  - path: units/application/s3-next
+    description: Customer data storage
+    dependencies:
+      - units/hosting/cluster-next
+  
+  # Hybrid specific units
+  - path: units/hybrid/control-plane-connector-next
+    description: Secure connection to HoneyHive control plane
+    dependencies:
+      - units/substrate/vpc-next
+      
+  - path: units/hybrid/api-gateway-next
+    description: Local API gateway for control plane communication
+    dependencies:
+      - units/hosting/cluster-next
+      
+  - path: units/hybrid/data-proxy-next
+    description: Data proxy for secure data transfer
+    dependencies:
+      - units/hosting/cluster-next
+      
+  - path: units/hybrid/privatelink-endpoints-next
+    description: PrivateLink to HoneyHive services
+    dependencies:
+      - units/substrate/vpc-next
+      
+  - path: units/hybrid/telemetry-forwarder-next
+    description: Forward metrics/logs to HoneyHive control plane
+    dependencies:
+      - units/hosting/cluster-next

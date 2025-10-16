@@ -1,0 +1,54 @@
+name: data_plane
+description: Compute workloads and processing
+stack_file: stacks/deployment-types/data-plane.stack.yaml
+components:
+  - substrate
+  - hosting
+features:
+  - karpenter
+  - eso
+  - observability
+  - gpu_support
+  - batch_compute
+disabled_features:
+  - twingate
+  - monitoring
+  - argocd
+  - backup
+cluster_config:
+  node_instance_types:
+    - c6i.2xlarge
+    - c6i.4xlarge
+    - g4dn.xlarge  # GPU instances
+  min_nodes: 1
+  max_nodes: 100
+  desired_nodes: 2
+  spot_enabled: true
+  spot_percentage: 80
+subnet_config:
+  count: 3
+  nat_strategy: single
+  public_newbits: 8   # /24 from /16 (256 IPs)
+  private_newbits: 2  # /18 from /16 (16,384 IPs for compute!)
+karpenter:
+  enabled: true
+  provisioners:
+    - name: compute-general
+      instance_types:
+        - c6i.2xlarge
+        - c6i.4xlarge
+        - m6i.2xlarge
+        - m6i.4xlarge
+      capacity_type: spot
+    - name: compute-gpu
+      instance_types:
+        - g4dn.xlarge
+        - g4dn.2xlarge
+        - g4dn.4xlarge
+      capacity_type: on-demand
+      taints:
+        nvidia.com/gpu: "true"
+tags:
+  Purpose: data-plane
+  Tier: compute
+  CostOptimized: "true"

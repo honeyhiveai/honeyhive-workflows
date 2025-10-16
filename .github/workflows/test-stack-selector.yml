@@ -1,0 +1,117 @@
+name: Test Stack Selector
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/select-stack.py'
+      - 'scripts/requirements.txt'
+      - 'stacks/deployment-types/configs/*.yaml'
+      - 'stacks/deployment-types/configs/*.yml'
+      - 'actions/setup-python-tools/**'
+      - '.github/workflows/test-stack-selector.yml'
+  workflow_dispatch:
+    inputs:
+      config_file:
+        description: 'Config file to test (relative to repo root)'
+        required: false
+        default: 'examples/configs/control-plane.yaml'
+        type: string
+
+jobs:
+  test-selector:
+    name: Test Stack Selector Script
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Python Tools
+        uses: ./actions/setup-python-tools
+        with:
+          python_version: '3.11'
+          requirements_file: scripts/requirements.txt
+      
+      - name: Test --help flag
+        run: |
+          echo "### 📚 Testing Help Output" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
+          ./scripts/select-stack.py --help | head -20 >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Test --list flag
+        run: |
+          echo "### 📋 Available Deployment Types" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
+          ./scripts/select-stack.py --list >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Validate all deployment configs
+        run: |
+          echo "### ✅ Validating Deployment Configurations" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Test each deployment config
+          for config in stacks/deployment-types/configs/*.yaml; do
+            if [ -f "$config" ]; then
+              echo "Testing $(basename $config)..." 
+              python3 -c "import yaml, sys; f=open('$config'); data=yaml.safe_load(f); f.close(); req=['name','description','stack_file','components','features']; miss=[r for r in req if r not in data]; print(f'  ❌ Missing: {miss}' if miss else '  ✅ Valid'); sys.exit(1 if miss else 0)" || exit 1
+              echo "- ✅ $(basename $config)" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Test with example configs
+        run: |
+          echo "### 🧪 Testing Example Configurations" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Test each example config
+          for config in examples/configs/*.yaml; do
+            if [ -f "$config" ]; then
+              echo "#### Testing $(basename $config)" >> $GITHUB_STEP_SUMMARY
+              echo "```" >> $GITHUB_STEP_SUMMARY
+              ./scripts/select-stack.py "$config" | grep -E "(Selected stack:|Deployment Type:)" >> $GITHUB_STEP_SUMMARY || echo "Failed to process $config"
+              echo "```" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+      
+      - name: Test specific config (if provided)
+        if: github.event_name == 'workflow_dispatch' && inputs.config_file != ''
+        run: |
+          echo "### 🎯 Testing Specific Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Config file: \`${{ inputs.config_file }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "${{ inputs.config_file }}" ]; then
+            echo "```" >> $GITHUB_STEP_SUMMARY
+            ./scripts/select-stack.py "${{ inputs.config_file }}" >> $GITHUB_STEP_SUMMARY
+            echo "```" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Configuration file not found: ${{ inputs.config_file }}" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+      
+      - name: Performance test
+        run: |
+          echo "### ⚡ Performance Test" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Time the script execution
+          echo "Testing script performance with --list flag:" >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
+          time -p ./scripts/select-stack.py --list > /dev/null 2>&1
+          echo "```" >> $GITHUB_STEP_SUMMARY
+          
+      - name: Check Python imports
+        run: |
+          echo "### 🐍 Python Import Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          python3 -c "import sys; exec('try:\n    import yaml, rich, click\n    from rich.console import Console\n    from rich.table import Table\n    print(\"✅ All required imports successful\")\nexcept ImportError as e:\n    print(f\"❌ Import error: {e}\")\n    sys.exit(1)')" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,26 @@
+name: substrate-stack
+description: Foundation networking and security layer - VPC, DNS, VPN
+terraform_binary: terraform
+
+# Stack-level configuration
+stack_configuration:
+  parallelism: 3
+  retry_max_attempts: 2
+  retry_sleep_interval_sec: 5
+
+# Units in this stack with explicit ordering
+units:
+  - path: units/substrate/vpc-next
+    description: Virtual Private Cloud with subnets and endpoints
+    
+  - path: units/substrate/dns-next
+    description: Private DNS hosted zone
+    dependencies:
+      - units/substrate/vpc-next
+    
+  - path: units/substrate/twingate-next
+    description: Zero-trust VPN access
+    dependencies:
+      - units/substrate/vpc-next
+    # Conditional deployment based on feature flag
+    skip: ${get_env("SKIP_TWINGATE", "false")}

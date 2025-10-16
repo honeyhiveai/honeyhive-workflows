@@ -1,0 +1,68 @@
+name: control-plane-stack
+description: Control Plane deployment - API, Dashboard, and GitOps management
+terraform_binary: terraform
+
+# Stack configuration for control plane
+stack_configuration:
+  parallelism: 3
+  retry_max_attempts: 2
+  retry_sleep_interval_sec: 5
+
+# Control plane components only
+units:
+  # Substrate layer - foundation (no VPN for control plane)
+  - path: units/substrate/vpc-next
+    description: Virtual Private Cloud
+    
+  - path: units/substrate/dns-next
+    description: Private DNS zone
+    dependencies:
+      - units/substrate/vpc-next
+  
+  # NO Twingate for control plane - customers access via their own VPN
+  
+  # Hosting layer - management services
+  - path: units/hosting/cluster-next
+    description: EKS Kubernetes cluster (smaller for control plane)
+    dependencies:
+      - units/substrate/vpc-next
+    
+  # NO Karpenter for control plane - fixed node groups only
+    
+  - path: units/hosting/addons-next
+    description: EKS cluster addons for control plane
+    dependencies:
+      - units/hosting/cluster-next
+    
+  - path: units/hosting/pod-identities-next
+    description: Pod identity associations
+    dependencies:
+      - units/hosting/cluster-next
+  
+  # Application layer - control plane needs database
+  - path: units/application/database-next
+    description: Control plane database (API state, configurations)
+    dependencies:
+      - units/substrate/vpc-next
+      - units/hosting/cluster-next
+    
+  - path: units/application/s3-next
+    description: Control plane storage (artifacts, configs)
+    dependencies:
+      - units/hosting/cluster-next
+  
+  # Control plane specific units
+  - path: units/control-plane/argocd-next
+    description: GitOps for managing data plane deployments
+    dependencies:
+      - units/hosting/cluster-next
+      
+  - path: units/control-plane/monitoring-next
+    description: Centralized monitoring (Prometheus, Grafana)
+    dependencies:
+      - units/hosting/cluster-next
+      
+  - path: units/control-plane/external-secrets-next
+    description: External Secrets Operator for secret management
+    dependencies:
+      - units/hosting/cluster-next

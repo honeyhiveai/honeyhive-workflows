@@ -1,0 +1,138 @@
+# Data Plane Deployment Configuration
+# Compute workloads and processing
+
+# Core Configuration
+org: honeyhive
+env: prod
+region: us-east-1
+sregion: use1
+deployment: compute-01
+account_id: "987654321098"
+
+# CRITICAL: Set deployment type
+deployment_type: data_plane
+
+# Networking Configuration - larger for compute
+vpc_cidr: 10.200.0.0/16
+subnet_count: 3  # Use 3 AZs for maximum scalability
+subnet_nat_strategy: single  # Single NAT for cost optimization
+enable_vpc_endpoints: false  # Minimal endpoints
+
+# VPC Module Configuration for larger private subnets
+subnet_public_newbits: 8   # Creates /24 public subnets (256 IPs)
+subnet_private_newbits: 2  # Creates /18 private subnets (16,384 IPs for compute!)
+
+# Optional: Override if you need specific CIDRs
+# subnet_public_cidrs: ["10.200.1.0/24", "10.200.2.0/24", "10.200.3.0/24"]
+# subnet_private_cidrs: ["10.200.64.0/18", "10.200.128.0/18", "10.200.192.0/18"]
+
+# DNS Configuration
+domain_name: compute.honeyhive.ai
+shortname: comp
+dns_zone_name: compute-01.use1.prod.comp.compute.honeyhive.ai
+
+# EKS Configuration - optimized for compute
+eks_version: "1.31"
+cluster_endpoint_private_access: true
+cluster_endpoint_public_access: false
+
+# Node configuration - auto-scaling for compute
+node_instance_types:
+  - c6i.2xlarge   # Compute optimized
+  - c6i.4xlarge
+  - c6i.8xlarge
+node_min_size: 1
+node_max_size: 100  # Scale big
+node_desired_size: 3
+
+# Karpenter configuration for data plane
+karpenter:
+  enabled: true  # Critical for data plane
+  provisioners:
+    - name: compute-general
+      instance_types:
+        - c6i.2xlarge
+        - c6i.4xlarge
+        - m6i.2xlarge
+        - m6i.4xlarge
+      capacity_type: spot  # Use spot for cost savings
+      
+    - name: compute-memory
+      instance_types:
+        - r6i.2xlarge
+        - r6i.4xlarge
+        - r6i.8xlarge
+      capacity_type: on-demand
+      taints:
+        - key: workload-type
+          value: memory-intensive
+          effect: NoSchedule
+          
+    - name: compute-gpu
+      instance_types:
+        - g4dn.xlarge
+        - g4dn.2xlarge
+        - g4dn.4xlarge
+      capacity_type: on-demand
+      taints:
+        - key: nvidia.com/gpu
+          value: "true"
+          effect: NoSchedule
+
+# Data Plane Features (auto-set by deployment_type)
+# - monitoring: false (ships to control plane)
+# - argocd: false (managed by control plane)
+# - eso: true (get secrets from control)
+# - observability: true (local collection)
+# - backup: false (stateless)
+# - karpenter: true (critical for scaling)
+
+# S3 Configuration (temporary storage)
+s3_versioning: false  # Not needed for temp data
+s3_lifecycle_rules:
+  - id: cleanup-temp
+    status: enabled
+    expiration_days: 7
+
+# Batch compute configuration (optional)
+batch_compute:
+  enabled: true
+  compute_environments:
+    - name: batch-spot
+      type: managed
+      state: enabled
+      compute_type: spot
+      max_vcpus: 256
+      
+    - name: batch-ondemand
+      type: managed
+      state: enabled
+      compute_type: on-demand
+      max_vcpus: 128
+
+# GPU support configuration (optional)
+gpu_support:
+  enabled: true
+  nvidia_device_plugin: true
+  gpu_operator: true
+
+# Observability - ships to control plane
+observability:
+  metrics:
+    prometheus_remote_write:
+      endpoint: https://control.honeyhive.ai/prometheus/write
+      auth_type: sigv4
+  logs:
+    fluent_bit:
+      output: kinesis_firehose
+      delivery_stream: control-plane-logs
+  traces:
+    opentelemetry:
+      endpoint: control.honeyhive.ai:4317
+      protocol: grpc
+
+# Connection to control plane
+control_plane:
+  endpoint: https://api.control.honeyhive.ai
+  region: us-west-2
+  auth_type: iam_role

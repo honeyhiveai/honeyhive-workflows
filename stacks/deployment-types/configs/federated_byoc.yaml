@@ -1,0 +1,70 @@
+name: federated_byoc
+description: Deploy in customer AWS account with HoneyHive management
+stack_file: stacks/deployment-types/federated-byoc.stack.yaml
+components:
+  - substrate
+  - hosting
+  - application
+  - byoc
+features:
+  - monitoring
+  - argocd
+  - eso
+  - observability
+  - backup
+  - customer_kms
+  - compliance_controls
+  - data_residency
+  - network_isolation
+disabled_features:
+  - twingate
+cluster_config:
+  node_instance_types:
+    - t3.large
+    - t3.xlarge
+    - m5.xlarge  # Customer approved types
+  min_nodes: 2
+  max_nodes: 20
+  desired_nodes: 3
+subnet_config:
+  count: 3
+  nat_strategy: per_az  # HA for production
+  public_newbits: 8   # /24 from /16
+  private_newbits: 4  # /20 from /16
+vpc_endpoints:
+  gateway:
+    - s3
+    - dynamodb
+  interface:
+    - ecr.dkr
+    - ecr.api
+    - logs
+    - ssm
+    - secretsmanager
+    - sts
+    - kms
+    - ec2
+security:
+  encryption: customer_managed
+  compliance:
+    - cloudtrail
+    - config
+    - guardduty
+    - security_hub
+  standards:
+    - cis-aws-foundations-benchmark
+    - aws-foundational-security-best-practices
+    - pci-dss
+    - gdpr
+cross_account:
+  management_role: HoneyHiveManagementRole
+  external_id_required: true
+  permissions_boundary_required: true
+data_residency:
+  enforce_region: true
+  block_cross_region: true
+tags:
+  Purpose: customer-byoc
+  Tier: production
+  DataSovereignty: required
+  ManagedBy: HoneyHive

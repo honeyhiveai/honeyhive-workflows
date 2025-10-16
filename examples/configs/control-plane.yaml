@@ -1,0 +1,88 @@
+# Control Plane Deployment Configuration
+# API, Dashboard, and GitOps management services
+
+# Core Configuration
+org: honeyhive
+env: prod
+region: us-west-2
+sregion: usw2
+deployment: control-01
+account_id: "123456789012"
+
+# CRITICAL: Set deployment type
+deployment_type: control_plane
+
+# Networking Configuration
+vpc_cidr: 10.100.0.0/16
+subnet_count: 2  # Use 2 AZs for control plane (HA but cost-optimized)
+subnet_nat_strategy: per_az  # HA NAT for control plane
+enable_vpc_endpoints: true  # All VPC endpoints for security
+
+# Optional: Override automatic subnet calculation if needed
+# subnet_azs: ["us-west-2a", "us-west-2b"]  # Explicit AZs
+# subnet_public_cidrs: ["10.100.1.0/24", "10.100.2.0/24"]  # Override public
+# subnet_private_cidrs: ["10.100.10.0/24", "10.100.11.0/24"]  # Override private
+
+# DNS Configuration
+domain_name: control.honeyhive.ai
+shortname: ctrl
+dns_zone_name: control-01.usw2.prod.ctrl.control.honeyhive.ai
+
+# EKS Configuration - smaller for control plane
+eks_version: "1.31"
+cluster_endpoint_private_access: true
+cluster_endpoint_public_access: false  # No public access for control
+
+# Node configuration - fixed size for control plane
+node_instance_types:
+  - t3.xlarge
+  - t3.large
+node_min_size: 2
+node_max_size: 4
+node_desired_size: 2
+
+# VPC Module Configuration (passed to tf-module-aws-vpc)
+subnet_public_newbits: 8   # Creates /24 public subnets from /16 VPC (256 IPs each)
+subnet_private_newbits: 4  # Creates /20 private subnets from /16 VPC (4096 IPs each)
+
+# Control Plane Features (auto-set by deployment_type)
+# These are automatically configured but shown for clarity:
+# - monitoring: true (Prometheus/Grafana)
+# - argocd: true (Manage data planes)
+# - eso: true (Secret management)
+# - observability: true (Central logging)
+# - backup: true (Velero for control plane data)
+# - karpenter: false (Fixed node groups)
+
+# Database Configuration (control plane state)
+db_instance_class: db.r6g.xlarge
+db_allocated_storage: 100
+db_multi_az: true  # HA for control plane
+
+# S3 Configuration (artifacts and configs)
+s3_versioning: true
+s3_encryption: true
+
+# Additional control plane settings
+enable_cluster_autoscaler: false  # Using fixed node groups
+enable_metrics_server: true
+enable_aws_load_balancer_controller: true
+enable_external_dns: true
+
+# ArgoCD specific settings for control plane
+argocd:
+  namespace: argocd
+  admin_enabled: true
+  dex_enabled: true  # SSO integration
+  notifications_enabled: true
+  applicationset_enabled: true  # Manage multiple data planes
+
+# Monitoring configuration
+monitoring:
+  prometheus:
+    retention: 30d
+    storage_size: 100Gi
+  grafana:
+    admin_user: admin
+    persistence_enabled: true
+    persistence_size: 10Gi

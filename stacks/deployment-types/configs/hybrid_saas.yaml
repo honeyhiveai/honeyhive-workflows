@@ -1,0 +1,48 @@
+name: hybrid_saas
+description: Control plane in HoneyHive cloud, data plane in customer cloud
+stack_file: stacks/deployment-types/hybrid-saas.stack.yaml
+components:
+  - substrate
+  - hosting
+  - hybrid
+features:
+  - karpenter
+  - eso
+  - observability
+  - hybrid_connector
+  - data_proxy
+  - privatelink
+disabled_features:
+  - twingate
+  - monitoring  # Forwards to control
+  - argocd      # Managed by control
+  - backup      # Control handles
+cluster_config:
+  node_instance_types:
+    - c6i.xlarge
+    - c6i.2xlarge
+    - c6i.4xlarge
+  min_nodes: 2
+  max_nodes: 50
+  desired_nodes: 3
+subnet_config:
+  count: 3
+  nat_strategy: single
+  public_newbits: 8   # /24 from /16
+  private_newbits: 3  # /20 from /16
+privatelink:
+  enabled: true
+  endpoints:
+    - api.control.honeyhive.ai
+    - metrics.control.honeyhive.ai
+    - logs.control.honeyhive.ai
+hybrid_config:
+  control_plane_endpoint: https://api.control.honeyhive.ai
+  control_plane_region: us-west-2
+  telemetry_forward: true
+  metrics_forward: true
+  logs_forward: true
+tags:
+  Purpose: hybrid-data-plane
+  Tier: compute
+  ControlPlane: external

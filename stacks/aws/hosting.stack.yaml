@@ -1,0 +1,32 @@
+name: hosting-stack
+description: Kubernetes platform layer - EKS and supporting infrastructure
+terraform_binary: terraform
+
+# Stack-level configuration
+stack_configuration:
+  parallelism: 3
+  retry_max_attempts: 2
+  retry_sleep_interval_sec: 5
+
+# Units in this stack
+units:
+  - path: units/hosting/cluster-next
+    description: EKS Kubernetes cluster
+    # Note: External dependency on substrate/vpc-next handled in unit
+    
+  - path: units/hosting/karpenter-next
+    description: Kubernetes node autoscaling with Karpenter
+    dependencies:
+      - units/hosting/cluster-next
+    skip: ${get_env("SKIP_KARPENTER", "false")}
+    
+  - path: units/hosting/addons-next
+    description: EKS managed addons and controllers
+    dependencies:
+      - units/hosting/cluster-next
+      - units/hosting/karpenter-next  # Ignored if karpenter is skipped
+    
+  - path: units/hosting/pod-identities-next
+    description: Pod identity associations for workload authentication
+    dependencies:
+      - units/hosting/cluster-next

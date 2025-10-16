@@ -1,0 +1,19 @@
+name: application-stack
+description: Application layer resources - databases, storage, and services
+terraform_binary: terraform
+
+# Stack-level configuration
+stack_configuration:
+  parallelism: 2
+  retry_max_attempts: 2
+  retry_sleep_interval_sec: 5
+
+# Units in this stack
+units:
+  - path: units/application/database-next
+    description: Application databases (RDS, DocumentDB, etc.)
+    # Note: External dependencies on substrate/vpc-next and hosting/cluster-next handled in unit
+    
+  - path: units/application/s3-next
+    description: Application object storage buckets
+    # Note: External dependency on hosting/cluster-next handled in unit

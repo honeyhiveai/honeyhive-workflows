@@ -1,0 +1,61 @@
+name: full-infrastructure
+description: Complete infrastructure stack with all layers
+terraform_binary: terraform
+
+# Stack-level configuration
+stack_configuration:
+  parallelism: 5
+  retry_max_attempts: 2
+  retry_sleep_interval_sec: 5
+
+# All units with proper dependency ordering
+units:
+  # Substrate layer - foundation
+  - path: units/substrate/vpc-next
+    description: Virtual Private Cloud
+    
+  - path: units/substrate/dns-next
+    description: Private DNS zone
+    dependencies:
+      - units/substrate/vpc-next
+    
+  - path: units/substrate/twingate-next
+    description: Zero-trust VPN
+    dependencies:
+      - units/substrate/vpc-next
+    skip: ${get_env("SKIP_TWINGATE", "false")}
+  
+  # Hosting layer - platform
+  - path: units/hosting/cluster-next
+    description: EKS Kubernetes cluster
+    dependencies:
+      - units/substrate/vpc-next
+    
+  - path: units/hosting/karpenter-next
+    description: Kubernetes autoscaler
+    dependencies:
+      - units/hosting/cluster-next
+    skip: ${get_env("SKIP_KARPENTER", "false")}
+    
+  - path: units/hosting/addons-next
+    description: EKS cluster addons
+    dependencies:
+      - units/hosting/cluster-next
+      - units/hosting/karpenter-next  # If karpenter is skipped, this dependency is ignored
+    
+  - path: units/hosting/pod-identities-next
+    description: Pod identity associations
+    dependencies:
+      - units/hosting/cluster-next
+  
+  # Application layer - workloads
+  - path: units/application/database-next
+    description: Application database
+    dependencies:
+      - units/substrate/vpc-next
+      - units/hosting/cluster-next
+    
+  - path: units/application/s3-next
+    description: Application storage
+    dependencies:
+      - units/hosting/cluster-next
