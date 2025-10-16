@@ -30,8 +30,8 @@ remote_state {
 
 
 # Skip if karpenter feature is disabled
-# Deployment type defaults are documented but skip uses simple feature flag check
-skip = !try(local.cfg.features.karpenter, true)
+# Uses merged features from overlay (deployment type defaults + user overrides)
+skip = !try(include.root.locals.features.karpenter, true)
 
 dependency "cluster" {
   config_path = "../../hosting/cluster"

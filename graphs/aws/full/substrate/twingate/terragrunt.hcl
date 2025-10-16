@@ -30,8 +30,8 @@ remote_state {
 
 
 # Skip if twingate feature is disabled
-# Deployment type defaults are documented but skip uses simple feature flag check
-skip = !try(local.cfg.features.twingate, false)
+# Uses merged features from overlay (deployment type defaults + user overrides)
+skip = !try(include.root.locals.features.twingate, false)
 
 dependency "vpc" {
   config_path = "../vpc"
