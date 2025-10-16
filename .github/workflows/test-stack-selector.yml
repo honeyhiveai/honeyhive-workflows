@@ -59,7 +59,7 @@ jobs:
           for config in stacks/deployment-types/configs/*.yaml; do
             if [ -f "$config" ]; then
               echo "Testing $(basename $config)..." 
-              python3 -c "
+              python3 <<EOF || exit 1
 import yaml
 import sys
 try:
@@ -75,7 +75,7 @@ try:
 except Exception as e:
     print(f'  ❌ Error: {e}')
     sys.exit(1)
-              " || exit 1
+EOF
               echo "- ✅ $(basename $config)" >> $GITHUB_STEP_SUMMARY
             fi
           done
