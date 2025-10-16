@@ -50,6 +50,11 @@ on:
         required: false
         type: string
         default: ''
+      aws_oidc_role:
+        description: 'AWS IAM role ARN for OIDC (HoneyhiveFederatedProvisioner)'
+        required: false
+        type: string
+        default: ''
     
     secrets:
       GITHUB_APP_ID:
@@ -142,7 +147,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::839515361289:role/GitHubActionsRole
+          role-to-assume: ${{ inputs.aws_oidc_role || vars.AWS_OIDC_ROLE }}
           role-session-name: terragrunt-stack-${{ github.run_id }}
           aws-region: ${{ steps.extract_config.outputs.region }}
       
