@@ -19,7 +19,7 @@ locals {
   
   # Features and configuration
   features      = try(local.cfg.features, {})
-  terraform_ref = try(local.cfg.terraform_ref, "v0.2.7")
+  terraform_ref = try(local.cfg.terraform_ref, "v0.2.8")
   
   # Common tags
   common_tags = {
@@ -62,7 +62,7 @@ provider "aws" {
   
   assume_role {
     role_arn     = "arn:aws:iam::${local.account_id}:role/HoneyhiveProvisioner"
-    session_name = "terragrunt-${local.env}-${local.deployment}-$${path_relative_to_include()}"
+    session_name = "terragrunt-${local.env}-${local.deployment}"
     external_id  = "honeyhive-deployments-${local.env}"
   }
   
