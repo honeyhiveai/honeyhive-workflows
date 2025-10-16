@@ -19,13 +19,18 @@ terraform {
   source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//substrate/aws/dns?ref=${include.root.locals.terraform_ref}"
 }
 
-inputs = merge(
-  include.root.locals.cfg,
-  {
-    layer   = "substrate"
-    service = "dns"
-    
-    vpc_id        = dependency.vpc.outputs.vpc_id
-    dns_zone_name = try(include.root.locals.cfg.dns_zone_name, "${include.root.locals.deployment}.${include.root.locals.sregion}.${include.root.locals.env}.${include.root.locals.cfg.shortname}.${include.root.locals.cfg.domain_name}")
-  }
-)
+inputs = {
+  # Core variables
+  org        = include.root.locals.org
+  env        = include.root.locals.env
+  region     = include.root.locals.region
+  sregion    = include.root.locals.sregion
+  deployment = include.root.locals.deployment
+  account_id = include.root.locals.account_id
+  
+  layer   = "substrate"
+  service = "dns"
+  
+  vpc_id        = dependency.vpc.outputs.vpc_id
+  dns_zone_name = try(include.root.locals.cfg.dns_zone_name, "${include.root.locals.deployment}.${include.root.locals.sregion}.${include.root.locals.env}.${include.root.locals.cfg.shortname}.${include.root.locals.cfg.domain_name}")
+}
