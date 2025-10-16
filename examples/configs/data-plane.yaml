@@ -14,22 +14,17 @@ deployment_type: data_plane
 
 # Networking Configuration - larger for compute
 vpc_cidr: 10.200.0.0/16
-availability_zones:
-  - us-east-1a
-  - us-east-1b
-  - us-east-1c
-nat_gateway_count: 1  # Cost optimization for data plane
+subnet_count: 3  # Use 3 AZs for maximum scalability
+subnet_nat_strategy: single  # Single NAT for cost optimization
 enable_vpc_endpoints: false  # Minimal endpoints
 
-# Larger subnets for compute workloads
-public_subnet_cidrs:
-  - 10.200.1.0/24
-  - 10.200.2.0/24
-  - 10.200.3.0/24
-private_subnet_cidrs:
-  - 10.200.10.0/22  # /22 for more IPs
-  - 10.200.14.0/22
-  - 10.200.18.0/22
+# VPC Module Configuration for larger private subnets
+subnet_public_newbits: 8   # Creates /24 public subnets (256 IPs)
+subnet_private_newbits: 2  # Creates /18 private subnets (16,384 IPs for compute!)
+
+# Optional: Override if you need specific CIDRs
+# subnet_public_cidrs: ["10.200.1.0/24", "10.200.2.0/24", "10.200.3.0/24"]
+# subnet_private_cidrs: ["10.200.64.0/18", "10.200.128.0/18", "10.200.192.0/18"]
 
 # DNS Configuration
 domain_name: compute.honeyhive.ai

@@ -14,27 +14,23 @@ deployment_type: federated_byoc
 
 # Customer Networking Configuration
 vpc_cidr: 172.16.0.0/16  # Customer's CIDR range
-availability_zones:
-  - eu-west-1a
-  - eu-west-1b
-  - eu-west-1c
-nat_gateway_count: 3  # HA for production
+subnet_count: 3  # Use 3 AZs for HA in production
+subnet_nat_strategy: per_az  # HA NAT gateways for production
 enable_vpc_endpoints: true  # Security requirement
 
 # Use existing VPC (optional)
 existing_vpc:
   enabled: false  # Set to true if using customer's existing VPC
   vpc_id: ""      # Provide if using existing
-  
-# Customer-defined subnets
-public_subnet_cidrs:
-  - 172.16.1.0/24
-  - 172.16.2.0/24
-  - 172.16.3.0/24
-private_subnet_cidrs:
-  - 172.16.10.0/24
-  - 172.16.11.0/24
-  - 172.16.12.0/24
+
+# VPC Module Configuration - customer may prefer specific sizing
+subnet_public_newbits: 8   # /24 public subnets (256 IPs)
+subnet_private_newbits: 4  # /20 private subnets (4,096 IPs)
+
+# Optional: Customer may require specific subnet CIDRs for compliance
+# subnet_azs: ["eu-west-1a", "eu-west-1b", "eu-west-1c"]
+# subnet_public_cidrs: ["172.16.1.0/24", "172.16.2.0/24", "172.16.3.0/24"]
+# subnet_private_cidrs: ["172.16.16.0/20", "172.16.32.0/20", "172.16.48.0/20"]
 
 # DNS Configuration - customer domain
 domain_name: internal.acmecorp.com

@@ -14,19 +14,14 @@ deployment_type: control_plane
 
 # Networking Configuration
 vpc_cidr: 10.100.0.0/16
-availability_zones:
-  - us-west-2a
-  - us-west-2b
-nat_gateway_count: 2  # HA for control plane
+subnet_count: 2  # Use 2 AZs for control plane (HA but cost-optimized)
+subnet_nat_strategy: per_az  # HA NAT for control plane
 enable_vpc_endpoints: true  # All VPC endpoints for security
 
-# Smaller subnets for control plane
-public_subnet_cidrs:
-  - 10.100.1.0/24
-  - 10.100.2.0/24
-private_subnet_cidrs:
-  - 10.100.10.0/24
-  - 10.100.11.0/24
+# Optional: Override automatic subnet calculation if needed
+# subnet_azs: ["us-west-2a", "us-west-2b"]  # Explicit AZs
+# subnet_public_cidrs: ["10.100.1.0/24", "10.100.2.0/24"]  # Override public
+# subnet_private_cidrs: ["10.100.10.0/24", "10.100.11.0/24"]  # Override private
 
 # DNS Configuration
 domain_name: control.honeyhive.ai
@@ -45,6 +40,10 @@ node_instance_types:
 node_min_size: 2
 node_max_size: 4
 node_desired_size: 2
+
+# VPC Module Configuration (passed to tf-module-aws-vpc)
+subnet_public_newbits: 8   # Creates /24 public subnets from /16 VPC (256 IPs each)
+subnet_private_newbits: 4  # Creates /20 private subnets from /16 VPC (4096 IPs each)
 
 # Control Plane Features (auto-set by deployment_type)
 # These are automatically configured but shown for clarity:

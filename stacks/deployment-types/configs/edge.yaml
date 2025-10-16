@@ -1,0 +1,43 @@
+name: edge
+description: Edge deployment for IoT and low-latency requirements
+stack_file: null  # Not yet implemented
+enabled: false    # Set to true when stack is ready
+components:
+  - substrate
+  - hosting
+features:
+  - eso
+  - edge_optimized
+  - offline_capable
+disabled_features:
+  - twingate
+  - monitoring
+  - argocd
+  - observability  # Limited bandwidth
+  - backup
+  - karpenter      # Fixed resources
+  - gpu_support
+  - batch_compute
+cluster_config:
+  node_instance_types:
+    - t3.small
+    - t3.medium
+    - t4g.small  # ARM for cost/power efficiency
+  min_nodes: 1
+  max_nodes: 3
+  desired_nodes: 1
+subnet_config:
+  count: 1  # Single AZ for edge
+  nat_strategy: none  # No NAT for cost
+  public_newbits: 12  # /28 from /16 (16 IPs)
+  private_newbits: 11 # /27 from /16 (32 IPs)
+edge_config:
+  offline_mode: true
+  local_storage: true
+  sync_interval: 3600  # Sync hourly when connected
+  compression: true
+  bandwidth_optimization: true
+tags:
+  Purpose: edge-deployment
+  Tier: edge
+  OfflineCapable: "true"

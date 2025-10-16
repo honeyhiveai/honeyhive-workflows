@@ -1,0 +1,43 @@
+name: control_plane
+description: API, dashboard, and GitOps management
+stack_file: stacks/deployment-types/control-plane.stack.yaml
+components:
+  - substrate
+  - hosting
+  - application
+features:
+  - monitoring
+  - argocd
+  - eso
+  - observability
+  - backup
+disabled_features:
+  - twingate
+  - karpenter
+  - gpu_support
+  - batch_compute
+cluster_config:
+  node_instance_types:
+    - t3.large
+    - t3.xlarge
+  min_nodes: 2
+  max_nodes: 4
+  desired_nodes: 2
+subnet_config:
+  count: 2
+  nat_strategy: per_az
+  public_newbits: 8  # /24 from /16
+  private_newbits: 4  # /20 from /16
+vpc_endpoints:
+  gateway:
+    - s3
+  interface:
+    - ecr.dkr
+    - ecr.api
+    - logs
+    - ssm
+    - secretsmanager
+    - sts
+tags:
+  Purpose: control-plane
+  Tier: management
