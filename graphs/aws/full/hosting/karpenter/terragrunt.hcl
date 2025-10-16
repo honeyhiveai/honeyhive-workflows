@@ -34,7 +34,7 @@ remote_state {
 skip = !try(include.root.locals.features.karpenter, true)
 
 dependency "cluster" {
-  config_path = "../cluster"
+  config_path = "hosting/cluster"
 
   mock_outputs = {
     cluster_name                       = "mock-cluster"
