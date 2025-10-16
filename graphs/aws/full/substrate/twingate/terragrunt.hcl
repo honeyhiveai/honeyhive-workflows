@@ -34,7 +34,7 @@ remote_state {
 skip = !try(include.root.locals.features.twingate, false)
 
 dependency "vpc" {
-  config_path = "../vpc"
+  config_path = "vpc"
 
   mock_outputs = {
     vpc_id             = "vpc-00000000"

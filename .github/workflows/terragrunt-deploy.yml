@@ -206,21 +206,9 @@ jobs:
           
           if [ "$LAYER" == "all" ]; then
             terragrunt run-all init --terragrunt-non-interactive
-          elif [ "$LAYER" == "substrate" ]; then
-            terragrunt run-all init --terragrunt-non-interactive \
-              --terragrunt-include-dir "substrate/**" \
-              --terragrunt-exclude-dir "hosting/**" \
-              --terragrunt-exclude-dir "application/**"
-          elif [ "$LAYER" == "hosting" ]; then
-            terragrunt run-all init --terragrunt-non-interactive \
-              --terragrunt-include-dir "substrate/**" \
-              --terragrunt-include-dir "hosting/**" \
-              --terragrunt-exclude-dir "application/**"
-          elif [ "$LAYER" == "application" ]; then
-            terragrunt run-all init --terragrunt-non-interactive
           else
-            echo "::error::Invalid layer specified: $LAYER"
-            exit 1
+            cd "$LAYER"
+            terragrunt run-all init --terragrunt-non-interactive
           fi
         env:
           TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
@@ -238,21 +226,9 @@ jobs:
           
           if [ "$LAYER" == "all" ]; then
             terragrunt run-all plan --terragrunt-non-interactive
-          elif [ "$LAYER" == "substrate" ]; then
-            terragrunt run-all plan --terragrunt-non-interactive \
-              --terragrunt-include-dir "substrate/**" \
-              --terragrunt-exclude-dir "hosting/**" \
-              --terragrunt-exclude-dir "application/**"
-          elif [ "$LAYER" == "hosting" ]; then
-            terragrunt run-all plan --terragrunt-non-interactive \
-              --terragrunt-include-dir "substrate/**" \
-              --terragrunt-include-dir "hosting/**" \
-              --terragrunt-exclude-dir "application/**"
-          elif [ "$LAYER" == "application" ]; then
-            terragrunt run-all plan --terragrunt-non-interactive
           else
-            echo "::error::Invalid layer specified: $LAYER"
-            exit 1
+            cd "$LAYER"
+            terragrunt run-all plan --terragrunt-non-interactive
           fi
         env:
           TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
@@ -269,21 +245,9 @@ jobs:
           
           if [ "$LAYER" == "all" ]; then
             terragrunt run-all apply --terragrunt-non-interactive
-          elif [ "$LAYER" == "substrate" ]; then
-            terragrunt run-all apply --terragrunt-non-interactive \
-              --terragrunt-include-dir "substrate/**" \
-              --terragrunt-exclude-dir "hosting/**" \
-              --terragrunt-exclude-dir "application/**"
-          elif [ "$LAYER" == "hosting" ]; then
-            terragrunt run-all apply --terragrunt-non-interactive \
-              --terragrunt-include-dir "substrate/**" \
-              --terragrunt-include-dir "hosting/**" \
-              --terragrunt-exclude-dir "application/**"
-          elif [ "$LAYER" == "application" ]; then
-            terragrunt run-all apply --terragrunt-non-interactive
           else
-            echo "::error::Invalid layer specified: $LAYER"
-            exit 1
+            cd "$LAYER"
+            terragrunt run-all apply --terragrunt-non-interactive
           fi
         env:
           TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
@@ -302,21 +266,9 @@ jobs:
           
           if [ "$LAYER" == "all" ]; then
             terragrunt run-all destroy --terragrunt-non-interactive
-          elif [ "$LAYER" == "substrate" ]; then
-            terragrunt run-all destroy --terragrunt-non-interactive \
-              --terragrunt-include-dir "substrate/**" \
-              --terragrunt-exclude-dir "hosting/**" \
-              --terragrunt-exclude-dir "application/**"
-          elif [ "$LAYER" == "hosting" ]; then
-            terragrunt run-all destroy --terragrunt-non-interactive \
-              --terragrunt-include-dir "substrate/**" \
-              --terragrunt-include-dir "hosting/**" \
-              --terragrunt-exclude-dir "application/**"
-          elif [ "$LAYER" == "application" ]; then
-            terragrunt run-all destroy --terragrunt-non-interactive
           else
-            echo "::error::Invalid layer specified: $LAYER"
-            exit 1
+            cd "$LAYER"
+            terragrunt run-all destroy --terragrunt-non-interactive
           fi
         env:
           TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
