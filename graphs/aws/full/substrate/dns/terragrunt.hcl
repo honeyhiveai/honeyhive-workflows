@@ -29,7 +29,7 @@ remote_state {
 
 
 dependency "vpc" {
-  config_path = "../vpc"
+  config_path = "${get_env("TERRAGRUNT_GRAPH_ROOT")}/substrate/vpc"
 
   # Mock outputs for initial plan before VPC exists
   mock_outputs = {
