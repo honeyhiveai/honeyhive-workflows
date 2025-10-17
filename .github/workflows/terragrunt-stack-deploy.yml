@@ -205,6 +205,7 @@ jobs:
           terragrunt stack run init
         env:
           TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
+          TERRAFORM_REF: ${{ inputs.terraform_ref }}
           TF_INPUT: 'false'
           TF_IN_AUTOMATION: '1'
           TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
@@ -240,6 +241,7 @@ jobs:
           fi
         env:
           TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
+          TERRAFORM_REF: ${{ inputs.terraform_ref }}
           TF_INPUT: 'false'
           TF_IN_AUTOMATION: '1'
           TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
@@ -278,6 +280,7 @@ jobs:
           echo "✅ **Stack deployment completed successfully**" >> $GITHUB_STEP_SUMMARY
         env:
           TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
+          TERRAFORM_REF: ${{ inputs.terraform_ref }}
           TF_INPUT: 'false'
           TF_IN_AUTOMATION: '1'
           TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
@@ -311,6 +314,7 @@ jobs:
           echo "✅ **Stack destruction completed**" >> $GITHUB_STEP_SUMMARY
         env:
           TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
+          TERRAFORM_REF: ${{ inputs.terraform_ref }}
           TF_INPUT: 'false'
           TF_IN_AUTOMATION: '1'
           TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
