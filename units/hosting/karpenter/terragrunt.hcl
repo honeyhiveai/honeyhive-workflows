@@ -37,6 +37,13 @@ inputs = {
   # State bucket for remote state lookup
   state_bucket = try(include.root.locals.cfg.state_bucket, "honeyhive-federated-${include.root.locals.sregion}-state")
   
+  # Cluster outputs from dependency (to override remote state lookup)
+  cluster_name            = dependency.cluster.outputs.cluster_name
+  cluster_endpoint        = dependency.cluster.outputs.cluster_endpoint
+  karpenter_node_role_arn = dependency.cluster.outputs.karpenter_node_role_arn
+  karpenter_node_role_name = dependency.cluster.outputs.karpenter_node_role_name
+  oidc_provider_arn       = dependency.cluster.outputs.oidc_provider_arn
+  
   # Karpenter configuration
   deploy_karpenter_controller = try(include.root.locals.cfg.deploy_karpenter, true)
 }
