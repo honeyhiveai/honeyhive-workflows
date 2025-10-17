@@ -2,16 +2,16 @@
 # Path names must match what dependency blocks expect
 
 unit "vpc" {
-  source = "../../../units/substrate/vpc-next"
-  path   = "vpc-next"
+  source = "../../../units/substrate/vpc"
+  path   = "vpc"
 }
 
 unit "dns" {
-  source = "../../../units/substrate/dns-next"
-  path   = "dns-next"
+  source = "../../../units/substrate/dns"
+  path   = "dns"
 }
 
 unit "twingate" {
-  source = "../../../units/substrate/twingate-next"
-  path   = "twingate-next"
+  source = "../../../units/substrate/twingate"
+  path   = "twingate"
 }

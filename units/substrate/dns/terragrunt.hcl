@@ -6,7 +6,7 @@ include "root" {
 }
 
 dependency "vpc" {
-  config_path = "../vpc-next"
+  config_path = "../vpc"
   
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
   mock_outputs = {
