@@ -22,7 +22,29 @@ dependency "karpenter" {
   
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
   mock_outputs = {
-    karpenter_queue_name = "mock-karpenter-queue"
+    karpenter_queue_name                = "mock-karpenter-queue"
+    karpenter_node_instance_profile_name = "mock-karpenter-node-profile"
+  }
+}
+
+dependency "pod_identities" {
+  config_path = "../pod-identities"
+  
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs = {
+    role_arns = {
+      EBSCSIDriver = "arn:aws:iam::123456789012:role/mock-ebs-csi-role"
+      Karpenter    = "arn:aws:iam::123456789012:role/mock-karpenter-role"
+    }
+  }
+}
+
+dependency "dns" {
+  config_path = "../../substrate/dns"
+  
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs = {
+    zone_name = "mock.zone.example.com"
   }
 }
 
@@ -42,9 +64,18 @@ inputs = {
   layer   = "hosting"
   service = "addons"
   
-  # State bucket for remote state lookups
+  # State bucket for remote state lookups (fallback only)
   state_bucket                = try(include.root.locals.cfg.state_bucket, "honeyhive-federated-${include.root.locals.sregion}-state")
   orchestration_account_id    = try(include.root.locals.cfg.orchestration_account_id, "839515361289")
+  
+  # Dependency outputs - override remote state lookups
+  cluster_name                        = dependency.cluster.outputs.cluster_name
+  cluster_endpoint                    = dependency.cluster.outputs.cluster_endpoint
+  cluster_version                     = dependency.cluster.outputs.cluster_version
+  oidc_provider_arn                   = dependency.cluster.outputs.oidc_provider_arn
+  iam_role_arns                       = dependency.pod_identities.outputs.role_arns
+  karpenter_node_instance_profile_name = dependency.karpenter.outputs.karpenter_node_instance_profile_name
+  dns_zone_name                       = dependency.dns.outputs.zone_name
   
   # Feature flags
   deploy_argocd               = try(include.root.locals.cfg.deploy_argocd, true)
