@@ -20,6 +20,18 @@ terraform {
   source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//substrate/aws/twingate?ref=${include.root.locals.terraform_ref}"
 }
 
+# Generate Twingate provider configuration
+generate "twingate_provider" {
+  path      = "twingate_provider.tf"
+  if_exists = "overwrite_terragrunt"
+  contents = <<EOF
+provider "twingate" {
+  api_token = "${get_env("TWINGATE_API_TOKEN")}"
+  network   = "${include.root.locals.cfg.twingate_network}"
+}
+EOF
+}
+
 inputs = {
   # Core variables
   org        = include.root.locals.org
