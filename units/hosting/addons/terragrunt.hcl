@@ -22,7 +22,8 @@ dependency "karpenter" {
   
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
   mock_outputs = {
-    karpenter_queue_name = "mock-karpenter-queue"
+    karpenter_queue_name                = "mock-karpenter-queue"
+    karpenter_node_instance_profile_name = "mock-karpenter-node-instance-profile"
   }
 }
 
@@ -30,7 +31,9 @@ dependency "pod_identities" {
   config_path = "../pod-identities"
   
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
-  mock_outputs = {}
+  mock_outputs = {
+    role_arns = {}
+  }
 }
 
 # DNS zone name comes from config, not dependency (cross-layer not supported in stack isolation)
@@ -56,14 +59,14 @@ inputs = {
   state_bucket                = try(include.root.locals.cfg.state_bucket, "honeyhive-federated-${include.root.locals.sregion}-state")
   orchestration_account_id    = try(include.root.locals.cfg.orchestration_account_id, "839515361289")
   
-  # Dependency outputs - override remote state lookups  
+  # Dependency outputs - NO remote state, everything from dependencies or config!
   cluster_name                        = dependency.cluster.outputs.cluster_name
   cluster_endpoint                    = dependency.cluster.outputs.cluster_endpoint
   cluster_version                     = dependency.cluster.outputs.cluster_version
   oidc_provider_arn                   = dependency.cluster.outputs.oidc_provider_arn
-  # Note: role_arns and instance_profile_name not passed - let module use remote state fallback
-  # These outputs don't exist in state until modules are re-applied with v0.2.24+
-  dns_zone_name                       = try(include.root.locals.cfg.dns_zone_name, null)  # From config, not dependency
+  iam_role_arns                       = dependency.pod_identities.outputs.role_arns
+  karpenter_node_instance_profile_name = dependency.karpenter.outputs.karpenter_node_instance_profile_name
+  dns_zone_name                       = try(include.root.locals.cfg.dns_zone_name, null)  # From config
   
   # Feature flags
   deploy_argocd               = try(include.root.locals.cfg.deploy_argocd, true)
