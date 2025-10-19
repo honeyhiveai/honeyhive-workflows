@@ -165,6 +165,7 @@ jobs:
       
       - name: Initialize Stack
         run: |
+          set -euo pipefail  # Exit on error, undefined vars, and pipe failures
           cd ${{ github.workspace }}/workflow-repo
           
           # Export configuration path for units to access
@@ -214,6 +215,7 @@ jobs:
       - name: Terragrunt Plan
         if: inputs.action == 'plan' || (inputs.action != 'destroy' && !inputs.auto_approve)
         run: |
+          set -euo pipefail  # Exit on error, undefined vars, and pipe failures
           cd ${{ github.workspace }}/workflow-repo
           
           export TENANT_CONFIG_PATH="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
@@ -229,7 +231,7 @@ jobs:
           echo "### 📋 Planning Stack Changes" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
-          # Run plan for the stack
+          # Run plan for the stack (pipefail ensures we catch terragrunt failures)
           cd "$STACK_DIR"
           terragrunt stack run plan 2>&1 | tee plan.log
           
@@ -250,6 +252,7 @@ jobs:
       - name: Terragrunt Apply
         if: inputs.action == 'apply' && inputs.auto_approve
         run: |
+          set -euo pipefail  # Exit on error, undefined vars, and pipe failures
           cd ${{ github.workspace }}/workflow-repo
           
           export TENANT_CONFIG_PATH="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
@@ -265,7 +268,7 @@ jobs:
           echo "### ✅ Applying Stack Changes" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
-          # Apply the stack changes
+          # Apply the stack changes (pipefail ensures we catch terragrunt failures)
           cd "$STACK_DIR"
           terragrunt stack run apply 2>&1 | tee apply.log
           
@@ -289,6 +292,7 @@ jobs:
       - name: Terragrunt Destroy
         if: inputs.action == 'destroy' && inputs.auto_approve
         run: |
+          set -euo pipefail  # Exit on error, undefined vars, and pipe failures
           cd ${{ github.workspace }}/workflow-repo
           
           export TENANT_CONFIG_PATH="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
@@ -306,7 +310,7 @@ jobs:
           echo "⚠️ **WARNING**: Destroying infrastructure resources" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
-          # Destroy the stack
+          # Destroy the stack (pipefail ensures we catch terragrunt failures)
           cd "$STACK_DIR"
           terragrunt stack run destroy 2>&1 | tee destroy.log
           
