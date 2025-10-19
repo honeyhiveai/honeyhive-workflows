@@ -39,14 +39,8 @@ dependency "pod_identities" {
   }
 }
 
-dependency "dns" {
-  config_path = "../../substrate/dns"
-  
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
-  mock_outputs = {
-    zone_name = "mock.zone.example.com"
-  }
-}
+# DNS zone name comes from config, not dependency (cross-layer not supported in stack isolation)
+# dependency "dns" removed - using config value instead
 
 terraform {
   source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/kubernetes/addons?ref=${include.root.locals.terraform_ref}"
@@ -75,7 +69,7 @@ inputs = {
   oidc_provider_arn                   = dependency.cluster.outputs.oidc_provider_arn
   iam_role_arns                       = dependency.pod_identities.outputs.role_arns
   karpenter_node_instance_profile_name = dependency.karpenter.outputs.karpenter_node_instance_profile_name
-  dns_zone_name                       = dependency.dns.outputs.zone_name
+  dns_zone_name                       = try(include.root.locals.cfg.dns_zone_name, null)  # From config, not dependency
   
   # Feature flags
   deploy_argocd               = try(include.root.locals.cfg.deploy_argocd, true)
