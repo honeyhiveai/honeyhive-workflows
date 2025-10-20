@@ -42,7 +42,8 @@ remote_state {
     key            = "${local.org}/${local.env}/${local.sregion}/${local.deployment}/${path_relative_to_include()}/terraform.tfstate"
     region         = local.region
     encrypt        = true
-    dynamodb_table = "honeyhive-orchestration-terraform-state-lock"
+    # DynamoDB locking disabled for dev/test (single user, isolated state files)
+    # dynamodb_table = "honeyhive-orchestration-terraform-state-lock"
   }
   
   generate = {
