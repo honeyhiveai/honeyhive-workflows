@@ -45,6 +45,7 @@ inputs = {
   oidc_provider_arn       = dependency.cluster.outputs.oidc_provider_arn
   
   # Karpenter configuration
-  deploy_karpenter_controller = try(include.root.locals.cfg.deploy_karpenter, true)
+  # Temporarily disabled due to "cannot re-use a name" Helm conflict
+  deploy_karpenter_controller = false  # try(include.root.locals.cfg.deploy_karpenter, true)
 }
 
