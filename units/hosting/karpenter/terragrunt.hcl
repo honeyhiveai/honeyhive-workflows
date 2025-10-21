@@ -16,15 +16,7 @@ dependencies {
 dependency "cluster" {
   config_path = "../cluster"
 
-  # Mock outputs for first deployment when cluster doesn't exist yet
-  mock_outputs = {
-    cluster_endpoint                  = "https://${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}.gr7.${include.root.locals.region}.eks.amazonaws.com"
-    cluster_certificate_authority_data = "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUN5VENDQVJDZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJME1EVXhNVEV4TURBd01Gb1hEVEkwTURVeE1URXhNREF3TUZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTGpBCk1Rc3dDUVlEVlFRR0V3SlZVekVUTUJFR0ExVUVDQk1LUTI5dmJtVnljMlZ5ZG1WeU1SQXdEZ1lEVlFRRERBdGUKUTI5dmJtVnljMlZ5ZG1WeU1JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBd0V6Ck1JSUI2NkFEQWdFQXdOQk1JSUI0VENDQW9XZ0E9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0t"
-    oidc_provider_arn                = "arn:aws:iam::${include.root.locals.account_id}:oidc-provider/oidc.eks.${include.root.locals.region}.amazonaws.com/id/00000000000000000000000000000000"
-    karpenter_node_role_arn          = "arn:aws:iam::${include.root.locals.account_id}:role/${title(include.root.locals.org)}${title(include.root.locals.env)}${upper(include.root.locals.sregion)}${title(include.root.locals.deployment)}KarpenterNode"
-    karpenter_node_role_name         = "${title(include.root.locals.org)}${title(include.root.locals.env)}${upper(include.root.locals.sregion)}${title(include.root.locals.deployment)}KarpenterNode"
-    ebs_csi_driver_role_arn          = "arn:aws:iam::${include.root.locals.account_id}:role/${title(include.root.locals.org)}${title(include.root.locals.env)}${upper(include.root.locals.sregion)}${title(include.root.locals.deployment)}EBSCSIDriver"
-  }
+  # No mock outputs - Karpenter will only run when cluster actually exists
 
   # Skip outputs during destroy to avoid dependency issues
   skip_outputs = false
@@ -53,7 +45,7 @@ inputs = {
   # cluster_name computes to: org-env-sregion-deployment
   cluster_name = "${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}"
 
-  # Use dependency outputs (with mock fallbacks for first deployment)
+  # Use dependency outputs - Karpenter will only run when cluster exists
   cluster_endpoint                  = dependency.cluster.outputs.cluster_endpoint
   cluster_certificate_authority_data = dependency.cluster.outputs.cluster_certificate_authority_data
   karpenter_node_role_arn           = dependency.cluster.outputs.karpenter_node_role_arn
