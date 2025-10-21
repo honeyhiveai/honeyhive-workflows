@@ -12,18 +12,8 @@ dependencies {
   ]
 }
 
-# Mock outputs for cluster dependency (needed for first deployment)
-dependency "cluster" {
-  config_path = "../cluster"
-
-  # No mock outputs - Karpenter will only run when cluster actually exists
-
-  # Skip outputs during destroy to avoid dependency issues
-  skip_outputs = false
-}
-
 terraform {
-  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/kubernetes/karpenter?ref=v1.2.14"
+  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/kubernetes/karpenter?ref=v1.2.15"
 }
 
 inputs = {
@@ -45,13 +35,8 @@ inputs = {
   # cluster_name computes to: org-env-sregion-deployment
   cluster_name = "${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}"
 
-  # Use dependency outputs - Karpenter will only run when cluster exists
-  cluster_endpoint                  = dependency.cluster.outputs.cluster_endpoint
-  cluster_certificate_authority_data = dependency.cluster.outputs.cluster_certificate_authority_data
-  karpenter_node_role_arn           = dependency.cluster.outputs.karpenter_node_role_arn
-  karpenter_node_role_name          = dependency.cluster.outputs.karpenter_node_role_name
-  oidc_provider_arn                 = dependency.cluster.outputs.oidc_provider_arn
-  ebs_csi_driver_role_arn           = dependency.cluster.outputs.ebs_csi_driver_role_arn
+  # Karpenter will read cluster info from remote state
+  # No dependency outputs needed - module handles remote state lookup
 
   # Karpenter configuration
   # Re-enabled now that cluster is clean
