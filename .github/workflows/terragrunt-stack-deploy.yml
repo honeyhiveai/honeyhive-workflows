@@ -340,7 +340,7 @@ jobs:
           # Destroy the stack (pipefail ensures we catch terragrunt failures)
           cd "$STACK_DIR"
           # Skip state locking for dev/test environments (single user)
-          terragrunt run --all destroy -- -lock=false 2>&1 | tee destroy.log
+          terragrunt stack run destroy -- -lock=false 2>&1 | tee destroy.log
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ **Stack destruction completed**" >> $GITHUB_STEP_SUMMARY
