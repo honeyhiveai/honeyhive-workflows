@@ -5,34 +5,14 @@ include "root" {
   expose = true
 }
 
-dependency "cluster" {
-  config_path = "../cluster"
-  
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
-  mock_outputs = {
-    cluster_name      = "mock-cluster"
-    cluster_endpoint  = "https://mock-endpoint.eks.amazonaws.com"
-    cluster_version   = "1.32"
-    oidc_provider_arn = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-west-2.amazonaws.com/id/MOCK"
-  }
+# Dependencies for execution order only - no outputs used (prevents destroy issues)
+dependencies {
+  paths = [
+    "../cluster",
+    "../karpenter",
+    "../pod-identities"
+  ]
 }
-
-dependency "karpenter" {
-  config_path = "../karpenter"
-  
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
-  mock_outputs = {}
-}
-
-dependency "pod_identities" {
-  config_path = "../pod-identities"
-  
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
-  mock_outputs = {}
-}
-
-# DNS zone name comes from config, not dependency (cross-layer not supported in stack isolation)
-# dependency "dns" removed - using config value instead
 
 terraform {
   source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/kubernetes/addons?ref=${include.root.locals.terraform_ref}"
@@ -54,11 +34,14 @@ inputs = {
   state_bucket                = try(include.root.locals.cfg.state_bucket, "honeyhive-federated-${include.root.locals.sregion}-state")
   orchestration_account_id    = try(include.root.locals.cfg.orchestration_account_id, "839515361289")
   
-  # Dependency outputs for core cluster info only
-  cluster_name                        = dependency.cluster.outputs.cluster_name
-  cluster_endpoint                    = dependency.cluster.outputs.cluster_endpoint
-  cluster_version                     = dependency.cluster.outputs.cluster_version
-  oidc_provider_arn                   = dependency.cluster.outputs.oidc_provider_arn
+  # Cluster info - computed from config (dependency outputs don't work during destroy!)
+  # cluster_name computes to: org-env-sregion-deployment
+  cluster_name      = "${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}"
+  cluster_version   = try(include.root.locals.cfg.cluster_version, "1.32")
+  
+  # These can't be computed - but module falls back to remote state if null
+  cluster_endpoint  = null  # Module will use remote state lookup
+  oidc_provider_arn = null  # Module will use remote state lookup
   
   # Don't pass these - module computes them from naming convention (eliminates chicken-and-egg)
   # iam_role_arns - computed as: arn:aws:iam::ACCOUNT:role/${iam_prefix}${RoleName}
