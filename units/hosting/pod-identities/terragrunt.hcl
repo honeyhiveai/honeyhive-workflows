@@ -5,8 +5,12 @@ include "root" {
   expose = true
 }
 
-# Dependencies handled at stack level via depends_on in terragrunt.stack.hcl
-# No unit-level dependencies needed - stack execution order is enforced by stack
+# Dependencies for execution order - pod identities need cluster to be ready
+dependencies {
+  paths = [
+    "../cluster"
+  ]
+}
 
 terraform {
   source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/pod_identities?ref=${include.root.locals.terraform_ref}"
