@@ -20,8 +20,8 @@ dependency "cluster" {
   mock_outputs = {
     cluster_endpoint        = "https://${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}.gr7.${include.root.locals.region}.eks.amazonaws.com"
     oidc_provider_arn       = "arn:aws:iam::${include.root.locals.account_id}:oidc-provider/oidc.eks.${include.root.locals.region}.amazonaws.com/id/00000000000000000000000000000000"
-    karpenter_node_role_arn = "arn:aws:iam::${include.root.locals.account_id}:role/${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}-KarpenterNode"
-    karpenter_node_role_name = "${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}-KarpenterNode"
+    karpenter_node_role_arn = "arn:aws:iam::${include.root.locals.account_id}:role/${title(include.root.locals.org)}${title(include.root.locals.env)}${title(include.root.locals.sregion)}${title(include.root.locals.deployment)}KarpenterNode"
+    karpenter_node_role_name = "${title(include.root.locals.org)}${title(include.root.locals.env)}${title(include.root.locals.sregion)}${title(include.root.locals.deployment)}KarpenterNode"
   }
   
   # Skip outputs during destroy to avoid dependency issues
