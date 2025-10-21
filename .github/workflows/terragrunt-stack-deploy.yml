@@ -282,11 +282,11 @@ jobs:
           # Use phased deployment: cluster first, then other units
           echo "### Phase 1: Applying cluster unit" >> $GITHUB_STEP_SUMMARY
           cd ../../../units/hosting/cluster
-          terragrunt run apply -- -lock=false 2>&1 | tee cluster-apply.log
+          terragrunt run apply -- -auto-approve -lock=false 2>&1 | tee cluster-apply.log
           cd - > /dev/null
           
           echo "### Phase 2: Applying remaining units" >> $GITHUB_STEP_SUMMARY
-          terragrunt stack run apply -- -lock=false 2>&1 | tee apply.log
+          terragrunt stack run apply -- -auto-approve -lock=false 2>&1 | tee apply.log
           
           # Check for failures in the output
           if grep -q "Failed\s\+[1-9]" apply.log || grep -q "ERROR" apply.log; then
@@ -356,11 +356,11 @@ jobs:
           # Skip state locking for dev/test environments (single user)
           # Use phased destruction: other units first, then cluster
           echo "### Phase 1: Destroying non-cluster units" >> $GITHUB_STEP_SUMMARY
-          terragrunt stack run destroy -- -lock=false 2>&1 | tee destroy.log
+          terragrunt stack run destroy -- -auto-approve -lock=false 2>&1 | tee destroy.log
           
           echo "### Phase 2: Destroying cluster unit" >> $GITHUB_STEP_SUMMARY
           cd ../../../units/hosting/cluster
-          terragrunt run destroy -- -lock=false 2>&1 | tee cluster-destroy.log
+          terragrunt run destroy -- -auto-approve -lock=false 2>&1 | tee cluster-destroy.log
           cd - > /dev/null
           
           echo "" >> $GITHUB_STEP_SUMMARY
