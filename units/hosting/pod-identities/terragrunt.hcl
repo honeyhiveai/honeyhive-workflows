@@ -5,13 +5,11 @@ include "root" {
   expose = true
 }
 
-dependency "cluster" {
-  config_path = "../cluster"
-  
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
-  mock_outputs = {
-    cluster_name = "mock-cluster"
-  }
+# Dependencies for execution order only - no outputs used (prevents destroy issues)
+dependencies {
+  paths = [
+    "../cluster"
+  ]
 }
 
 terraform {
