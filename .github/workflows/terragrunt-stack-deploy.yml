@@ -30,6 +30,11 @@ on:
         required: false
         type: string
         default: 'configs'
+      config_file:
+        description: 'Full path to config file relative to config repo (e.g., configs/test-usw2-app03.yaml)'
+        required: false
+        type: string
+        default: ''
       terraform_repo:
         description: 'Terraform modules repository'
         required: false
@@ -90,7 +95,7 @@ jobs:
       TERRAGRUNT_NON_INTERACTIVE: "true"
       TERRAGRUNT_INCLUDE_DEPENDENCY_OUTPUTS: "true"
       TERRAGRUNT_LOG_LEVEL: info
-      CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
+      CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_file != '' && inputs.config_file || format('{0}/{1}.yaml', inputs.config_path, inputs.environment) }}
 
     steps:
       - name: Generate GitHub App Token
