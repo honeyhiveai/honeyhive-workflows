@@ -234,7 +234,7 @@ jobs:
           # Run plan for the stack (pipefail ensures we catch terragrunt failures)
           cd "$STACK_DIR"
           # Skip state locking for dev/test environments (single user)
-          terragrunt stack run plan --graph -- -lock=false 2>&1 | tee plan.log
+          terragrunt stack run --graph plan -- -lock=false 2>&1 | tee plan.log
           
           # Extract summary from plan
           if grep -q "No changes" plan.log; then
@@ -272,7 +272,7 @@ jobs:
           # Apply the stack changes (pipefail ensures we catch terragrunt failures)
           cd "$STACK_DIR"
           # Skip state locking for dev/test environments (single user)
-          terragrunt stack run apply --graph -- -lock=false 2>&1 | tee apply.log
+          terragrunt stack run --graph apply -- -lock=false 2>&1 | tee apply.log
           
           # Check for failures in the output
           if grep -q "Failed\s\+[1-9]" apply.log || grep -q "ERROR" apply.log; then
@@ -340,7 +340,7 @@ jobs:
           # Destroy the stack (pipefail ensures we catch terragrunt failures)
           cd "$STACK_DIR"
           # Skip state locking for dev/test environments (single user)
-          terragrunt stack run destroy --graph -- -lock=false 2>&1 | tee destroy.log
+          terragrunt stack run --graph destroy -- -lock=false 2>&1 | tee destroy.log
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ **Stack destruction completed**" >> $GITHUB_STEP_SUMMARY
