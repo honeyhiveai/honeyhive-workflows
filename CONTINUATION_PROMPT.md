@@ -220,18 +220,21 @@ cluster_version: "1.32"
 ## Next Session Tasks (Updated October 17, 2025)
 
 ### Priority 1: Deploy Hosting Stack
+
 1. **Test hosting plan** - Verify all 4 units can plan
 2. **Deploy hosting apply** - Create EKS + Karpenter + addons + pod-identities
 3. **Verify resources** - Check AWS console, test cluster access
 4. **Test idempotency** - Re-run apply, should be 0 changes
 
 ### Priority 2: Enable Application Layer
+
 1. **Create application units** - S3 and database in `units/application/`
 2. **Create application stack** - Add `stacks/aws/application/terragrunt.stack.hcl`
 3. **Test application deployment** - Deploy and verify
 4. **Test full stack** - Deploy all 3 layers together
 
 ### Priority 3: Documentation
+
 1. **Update CONTINUATION_PROMPT.md** - Keep current status updated
 2. **Create or update architecture docs** - Reflect Stacks pattern
 3. **Deprecate old prompts** - Or update them to match reality

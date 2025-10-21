@@ -102,6 +102,7 @@ security:
 
 1. Create a new YAML file: `my_deployment.yaml`
 2. Define the required fields:
+
    ```yaml
    name: my_deployment
    description: My custom deployment type
@@ -112,6 +113,7 @@ security:
    features:
      - monitoring
    ```
+
 3. Create the corresponding stack file referenced in `stack_file`
 4. Test with: `./scripts/select-stack.py --list`
 
@@ -122,6 +124,7 @@ Platform engineers can customize deployment types by editing the YAML files:
 ### Example: Change Node Types for Data Plane
 
 Edit `data_plane.yaml`:
+
 ```yaml
 cluster_config:
   node_instance_types:
@@ -133,6 +136,7 @@ cluster_config:
 ### Example: Add VPC Endpoints to Control Plane
 
 Edit `control_plane.yaml`:
+
 ```yaml
 vpc_endpoints:
   interface:
@@ -145,6 +149,7 @@ vpc_endpoints:
 ### Example: Enable GPU Support
 
 Edit `data_plane.yaml`:
+
 ```yaml
 features:
   - karpenter
@@ -161,16 +166,19 @@ cluster_config:
 After modifying a configuration:
 
 1. Validate YAML syntax:
+
    ```bash
    python3 -c "import yaml; yaml.safe_load(open('my_deployment.yaml'))"
    ```
 
 2. Test with the selector:
+
    ```bash
    ./scripts/select-stack.py --list
    ```
 
 3. Test with a config file:
+
    ```bash
    ./scripts/select-stack.py configs/test-environment.yaml
    ```
@@ -229,6 +237,7 @@ node_max_size: 8             # Allow more nodes
 ## Support
 
 For questions or issues:
+
 1. Check this README
 2. Run `./scripts/select-stack.py --help`
 3. Review example configurations

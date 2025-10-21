@@ -64,6 +64,7 @@ Ensures that Python scripts in the workflows (like `select-stack.py`) have their
 ## Default Dependencies
 
 If no requirements file is found, the action installs:
+
 - `pyyaml>=6.0` - For YAML configuration parsing
 - `rich>=13.0` - For beautiful terminal output
 
@@ -112,6 +113,7 @@ Cache key format: `{os}-pip-{requirements_hash}`
 ### Import Errors
 
 If you get import errors after setup:
+
 1. Check that the requirements file exists and is valid
 2. Verify the Python version is compatible with your packages
 3. Clear the cache if dependencies have changed
@@ -119,12 +121,14 @@ If you get import errors after setup:
 ### Cache Issues
 
 To force a cache refresh:
+
 1. Change the requirements file (even adding a comment works)
 2. Or set `cache_dependencies: 'false'`
 
 ### Path Issues  
 
 The action automatically adds script directories to PATH:
+
 - `workflow-repo/scripts/` (for honeyhive-workflows scripts)
 - `scripts/` (for calling repository scripts)
 

@@ -41,11 +41,13 @@ units/
 ### 3. Flattened Includes (Single-Level Only)
 
 Terragrunt Stacks **only supports one level of includes**. We use `stack-config.hcl` which combines:
+
 - Tenant configuration loading (YAML)
 - Remote state configuration (S3)
 - AWS provider generation
 
 **Don't do this** (nested includes fail in Stacks):
+
 ```hcl
 # ❌ aws-provider.hcl includes tenant-config.hcl
 include "tenant_config" { ... }
@@ -53,6 +55,7 @@ include "aws_provider" { ... }  # This tries to include tenant_config again
 ```
 
 **Do this** (single-level):
+
 ```hcl
 # ✅ One include with everything
 include "root" {
@@ -170,7 +173,8 @@ unit "twingate" {
 }
 ```
 
-**Important**: 
+**Important**:
+
 - Path must match what dependency `config_path` expects
 - No `dependencies = []` attribute (managed in units)
 - Dependencies resolved via `dependency` blocks in units
@@ -245,7 +249,8 @@ inputs = {
 ```
 
 **Key Points:**
-- ✅ Use explicit `inputs = { ... }` 
+
+- ✅ Use explicit `inputs = { ... }`
 - ❌ Don't use `merge(include.root.locals.cfg, {...})` - causes null values
 - ✅ Reference config via `include.root.locals.cfg.xxx`
 - ✅ Use `try()` for optional values with defaults
@@ -299,6 +304,7 @@ GitHub Actions → OIDC → HoneyhiveFederatedProvisioner → HoneyhiveProvision
 ```
 
 The Federated role needs:
+
 - Secrets Manager permissions (create, update secrets)
 - KMS permissions (Decrypt, GenerateDataKey, Encrypt, CreateGrant)
 - STS permissions (AssumeRole to target accounts)
@@ -403,6 +409,7 @@ terraform_ref = try(
 ```
 
 Pass via workflow:
+
 ```yaml
 env:
   TERRAFORM_REF: ${{ inputs.terraform_ref }}
@@ -454,4 +461,3 @@ Configured via YAML in `stacks/deployment-types/configs/`.
 
 *Last Updated: October 2025*
 *Architecture: Modern Terragrunt Stacks with explicit dependencies*
-
