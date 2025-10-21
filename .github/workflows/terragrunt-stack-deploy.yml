@@ -291,6 +291,31 @@ jobs:
           TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
           SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
       
+      - name: Cleanup Karpenter Nodes (Pre-Destroy)
+        if: inputs.action == 'destroy' && inputs.auto_approve && (inputs.stack == 'hosting' || inputs.stack == 'full')
+        run: |
+          set -euo pipefail
+          cd ${{ github.workspace }}/workflow-repo
+          
+          # Extract cluster name from config
+          CONFIG_PATH="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
+          ORG=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH'))['org'])")
+          ENV=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH'))['env'])")
+          SREGION=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH'))['sregion'])")
+          DEPLOYMENT=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH'))['deployment'])")
+          REGION=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH'))['region'])")
+          
+          CLUSTER_NAME="${ORG}-${ENV}-${SREGION}-${DEPLOYMENT}"
+          
+          echo "🧹 Cleaning up Karpenter-provisioned nodes before destroy"
+          echo "Cluster: $CLUSTER_NAME"
+          echo ""
+          
+          chmod +x scripts/cleanup-karpenter-nodes.sh
+          ./scripts/cleanup-karpenter-nodes.sh "$CLUSTER_NAME" "$REGION" || echo "⚠️ Node cleanup failed or no nodes found - continuing with destroy"
+        env:
+          AWS_DEFAULT_REGION: ${{ steps.extract_config.outputs.region }}
+      
       - name: Terragrunt Destroy
         if: inputs.action == 'destroy' && inputs.auto_approve
         run: |
