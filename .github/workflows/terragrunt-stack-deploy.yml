@@ -180,16 +180,48 @@ jobs:
         run: |
           case "${{ inputs.action }}" in
             validate)
-              terragrunt stack run validate
+              # Phase 1: Deploy cluster first (foundation)
+              echo "=== Phase 1: Deploying cluster ==="
+              cd ../../../units/hosting/cluster
+              terragrunt run validate
+              cd - > /dev/null
+              
+              # Phase 2: Deploy dependent units
+              echo "=== Phase 2: Deploying dependent units ==="
+              terragrunt stack run validate -- --terragrunt-ignore-dependency-errors
               ;;
             plan)
-              terragrunt stack run plan -- -lock-timeout=10m -input=false
+              # Phase 1: Deploy cluster first (foundation)
+              echo "=== Phase 1: Planning cluster ==="
+              cd ../../../units/hosting/cluster
+              terragrunt run plan -- -lock-timeout=10m -input=false
+              cd - > /dev/null
+              
+              # Phase 2: Plan dependent units
+              echo "=== Phase 2: Planning dependent units ==="
+              terragrunt stack run plan -- --terragrunt-ignore-dependency-errors -lock-timeout=10m -input=false
               ;;
             apply)
-              terragrunt stack run apply -- -auto-approve -lock-timeout=10m -input=false
+              # Phase 1: Deploy cluster first (foundation)
+              echo "=== Phase 1: Applying cluster ==="
+              cd ../../../units/hosting/cluster
+              terragrunt run apply -- -auto-approve -lock-timeout=10m -input=false
+              cd - > /dev/null
+              
+              # Phase 2: Apply dependent units
+              echo "=== Phase 2: Applying dependent units ==="
+              terragrunt stack run apply -- --terragrunt-ignore-dependency-errors -auto-approve -lock-timeout=10m -input=false
               ;;
             destroy)
-              terragrunt stack run destroy -- -auto-approve -lock-timeout=10m -input=false
+              # Phase 1: Destroy dependent units first (reverse order)
+              echo "=== Phase 1: Destroying dependent units ==="
+              terragrunt stack run destroy -- --terragrunt-ignore-dependency-errors -auto-approve -lock-timeout=10m -input=false
+              
+              # Phase 2: Destroy cluster last
+              echo "=== Phase 2: Destroying cluster ==="
+              cd ../../../units/hosting/cluster
+              terragrunt run destroy -- -auto-approve -lock-timeout=10m -input=false
+              cd - > /dev/null
               ;;
             *) echo "Unsupported action: ${{ inputs.action }}" >&2; exit 64 ;;
           esac
