@@ -158,7 +158,7 @@ jobs:
         run: |
           case "${{ inputs.stack }}" in
           substrate|hosting|application|full)
-          echo "dir=stacks/aws/${{ inputs.stack }}" >> "$GITHUB_OUTPUT" ;;
+          echo "dir=${{ github.workspace }}/workflow-repo/stacks/aws/${{ inputs.stack }}" >> "$GITHUB_OUTPUT" ;;
           *)
           echo "Unsupported stack: ${{ inputs.stack }}" >&2; exit 64 ;;
           esac
