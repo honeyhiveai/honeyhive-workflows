@@ -5,17 +5,11 @@ include "root" {
   expose = true
 }
 
-dependency "cluster" {
-  config_path = "../cluster"
-  
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
-  mock_outputs = {
-    cluster_name            = "mock-cluster"
-    cluster_endpoint        = "https://mock-endpoint.eks.amazonaws.com"
-    karpenter_node_role_arn = "arn:aws:iam::123456789012:role/MockKarpenterNodeRole"
-    karpenter_node_role_name = "MockKarpenterNodeRole"
-    oidc_provider_arn       = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-west-2.amazonaws.com/id/MOCK"
-  }
+# Dependencies for execution order only - no outputs used (prevents destroy issues)
+dependencies {
+  paths = [
+    "../cluster"
+  ]
 }
 
 terraform {
@@ -37,12 +31,15 @@ inputs = {
   # State bucket for remote state lookup
   state_bucket = try(include.root.locals.cfg.state_bucket, "honeyhive-federated-${include.root.locals.sregion}-state")
   
-  # Cluster outputs from dependency (to override remote state lookup)
-  cluster_name            = dependency.cluster.outputs.cluster_name
-  cluster_endpoint        = dependency.cluster.outputs.cluster_endpoint
-  karpenter_node_role_arn = dependency.cluster.outputs.karpenter_node_role_arn
-  karpenter_node_role_name = dependency.cluster.outputs.karpenter_node_role_name
-  oidc_provider_arn       = dependency.cluster.outputs.oidc_provider_arn
+  # Cluster info - computed from config (dependency outputs don't work during destroy!)
+  # cluster_name computes to: org-env-sregion-deployment
+  cluster_name            = "${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}"
+  
+  # These can't be computed - but module falls back to remote state if null
+  cluster_endpoint        = null  # Module will use remote state lookup
+  karpenter_node_role_arn = null  # Module will use remote state lookup
+  karpenter_node_role_name = null  # Module will use remote state lookup
+  oidc_provider_arn       = null  # Module will use remote state lookup
   
   # Karpenter configuration
   # Re-enabled now that cluster is clean
