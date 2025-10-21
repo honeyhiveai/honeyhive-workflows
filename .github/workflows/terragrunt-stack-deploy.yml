@@ -234,6 +234,11 @@ jobs:
           # Run plan for the stack (pipefail ensures we catch terragrunt failures)
           cd "$STACK_DIR"
           # Skip state locking for dev/test environments (single user)
+          # Use phased deployment: cluster first, then other units
+          echo "### Phase 1: Planning cluster unit" >> $GITHUB_STEP_SUMMARY
+          terragrunt run plan --terragrunt-working-dir cluster -- -lock=false 2>&1 | tee cluster-plan.log
+          
+          echo "### Phase 2: Planning remaining units" >> $GITHUB_STEP_SUMMARY
           terragrunt stack run plan -- -lock=false 2>&1 | tee plan.log
           
           # Extract summary from plan
@@ -272,6 +277,11 @@ jobs:
           # Apply the stack changes (pipefail ensures we catch terragrunt failures)
           cd "$STACK_DIR"
           # Skip state locking for dev/test environments (single user)
+          # Use phased deployment: cluster first, then other units
+          echo "### Phase 1: Applying cluster unit" >> $GITHUB_STEP_SUMMARY
+          terragrunt run apply --terragrunt-working-dir cluster -- -lock=false 2>&1 | tee cluster-apply.log
+          
+          echo "### Phase 2: Applying remaining units" >> $GITHUB_STEP_SUMMARY
           terragrunt stack run apply -- -lock=false 2>&1 | tee apply.log
           
           # Check for failures in the output
@@ -340,7 +350,12 @@ jobs:
           # Destroy the stack (pipefail ensures we catch terragrunt failures)
           cd "$STACK_DIR"
           # Skip state locking for dev/test environments (single user)
+          # Use phased destruction: other units first, then cluster
+          echo "### Phase 1: Destroying non-cluster units" >> $GITHUB_STEP_SUMMARY
           terragrunt stack run destroy -- -lock=false 2>&1 | tee destroy.log
+          
+          echo "### Phase 2: Destroying cluster unit" >> $GITHUB_STEP_SUMMARY
+          terragrunt run destroy --terragrunt-working-dir cluster -- -lock=false 2>&1 | tee cluster-destroy.log
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ **Stack destruction completed**" >> $GITHUB_STEP_SUMMARY
