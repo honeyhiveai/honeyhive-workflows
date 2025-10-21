@@ -12,6 +12,22 @@ dependencies {
   ]
 }
 
+# Mock outputs for cluster dependency (needed for first deployment)
+dependency "cluster" {
+  config_path = "../cluster"
+  
+  # Mock outputs for first deployment when cluster doesn't exist yet
+  mock_outputs = {
+    cluster_endpoint        = "https://${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}.gr7.${include.root.locals.region}.eks.amazonaws.com"
+    oidc_provider_arn       = "arn:aws:iam::${include.root.locals.account_id}:oidc-provider/oidc.eks.${include.root.locals.region}.amazonaws.com/id/00000000000000000000000000000000"
+    karpenter_node_role_arn = "arn:aws:iam::${include.root.locals.account_id}:role/${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}-KarpenterNode"
+    karpenter_node_role_name = "${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}-KarpenterNode"
+  }
+  
+  # Skip outputs during destroy to avoid dependency issues
+  skip_outputs = false
+}
+
 terraform {
   source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/kubernetes/karpenter?ref=${include.root.locals.terraform_ref}"
 }
@@ -35,11 +51,11 @@ inputs = {
   # cluster_name computes to: org-env-sregion-deployment
   cluster_name            = "${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}"
   
-  # These can't be computed - but module falls back to remote state if null
-  cluster_endpoint        = null  # Module will use remote state lookup
-  karpenter_node_role_arn = null  # Module will use remote state lookup
-  karpenter_node_role_name = null  # Module will use remote state lookup
-  oidc_provider_arn       = null  # Module will use remote state lookup
+  # Use dependency outputs (with mock fallbacks for first deployment)
+  cluster_endpoint        = dependency.cluster.outputs.cluster_endpoint
+  karpenter_node_role_arn = dependency.cluster.outputs.karpenter_node_role_arn
+  karpenter_node_role_name = dependency.cluster.outputs.karpenter_node_role_name
+  oidc_provider_arn       = dependency.cluster.outputs.oidc_provider_arn
   
   # Karpenter configuration
   # Re-enabled now that cluster is clean
