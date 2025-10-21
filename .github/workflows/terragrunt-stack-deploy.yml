@@ -91,6 +91,7 @@ jobs:
       TERRAGRUNT_INCLUDE_DEPENDENCY_OUTPUTS: "true"
       TERRAGRUNT_LOG_LEVEL: info
       CONFIG_PATH: ${{ inputs.config_path }}
+      TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
 
     steps:
       - name: Generate GitHub App Token
@@ -143,6 +144,7 @@ jobs:
       
       - name: Print tenant config
         run: |
+          export TENANT_CONFIG_PATH="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
           echo "TENANT_CONFIG_PATH=$TENANT_CONFIG_PATH"
           test -f "$TENANT_CONFIG_PATH" || (echo "Tenant config not found" && exit 1)
           echo '---'; sed -n '1,120p' "$TENANT_CONFIG_PATH" || true
