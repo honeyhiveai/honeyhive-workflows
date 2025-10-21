@@ -168,9 +168,7 @@ jobs:
         continue-on-error: false
         working-directory: ${{ steps.select-dir.outputs.dir }}
         run: |
-          terragrunt dag graph \
-            --terragrunt-include-external-dependencies=${{ inputs.include_external }} \
-            --terragrunt-queue-max-parallelism=${{ inputs.queue_max_parallelism }}
+          terragrunt dag graph
 
 
 
@@ -182,27 +180,16 @@ jobs:
         run: |
           case "${{ inputs.action }}" in
             validate)
-              terragrunt stack run validate \
-                --terragrunt-include-external-dependencies=${{ inputs.include_external }} \
-                --terragrunt-queue-max-parallelism=${{ inputs.queue_max_parallelism }}
+              terragrunt stack run validate
               ;;
             plan)
-              terragrunt stack run plan \
-                --terragrunt-include-external-dependencies=${{ inputs.include_external }} \
-                --terragrunt-queue-max-parallelism=${{ inputs.queue_max_parallelism }} \
-                -- -lock-timeout=10m -input=false
+              terragrunt stack run plan -- -lock-timeout=10m -input=false
               ;;
             apply)
-              terragrunt stack run apply \
-                --terragrunt-include-external-dependencies=${{ inputs.include_external }} \
-                --terragrunt-queue-max-parallelism=${{ inputs.queue_max_parallelism }} \
-                -- -auto-approve -lock-timeout=10m -input=false
+              terragrunt stack run apply -- -auto-approve -lock-timeout=10m -input=false
               ;;
             destroy)
-              terragrunt stack run destroy \
-                --terragrunt-include-external-dependencies=${{ inputs.include_external }} \
-                --terragrunt-queue-max-parallelism=${{ inputs.queue_max_parallelism }} \
-                -- -auto-approve -lock-timeout=10m -input=false
+              terragrunt stack run destroy -- -auto-approve -lock-timeout=10m -input=false
               ;;
             *) echo "Unsupported action: ${{ inputs.action }}" >&2; exit 64 ;;
           esac
