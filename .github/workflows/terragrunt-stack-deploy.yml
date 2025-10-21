@@ -236,7 +236,9 @@ jobs:
           # Skip state locking for dev/test environments (single user)
           # Use phased deployment: cluster first, then other units
           echo "### Phase 1: Planning cluster unit" >> $GITHUB_STEP_SUMMARY
-          terragrunt run plan --terragrunt-working-dir cluster -- -lock=false 2>&1 | tee cluster-plan.log
+          cd cluster
+          terragrunt run plan -- -lock=false 2>&1 | tee cluster-plan.log
+          cd ..
           
           echo "### Phase 2: Planning remaining units" >> $GITHUB_STEP_SUMMARY
           terragrunt stack run plan -- -lock=false 2>&1 | tee plan.log
@@ -279,7 +281,9 @@ jobs:
           # Skip state locking for dev/test environments (single user)
           # Use phased deployment: cluster first, then other units
           echo "### Phase 1: Applying cluster unit" >> $GITHUB_STEP_SUMMARY
-          terragrunt run apply --terragrunt-working-dir cluster -- -lock=false 2>&1 | tee cluster-apply.log
+          cd cluster
+          terragrunt run apply -- -lock=false 2>&1 | tee cluster-apply.log
+          cd ..
           
           echo "### Phase 2: Applying remaining units" >> $GITHUB_STEP_SUMMARY
           terragrunt stack run apply -- -lock=false 2>&1 | tee apply.log
@@ -355,7 +359,9 @@ jobs:
           terragrunt stack run destroy -- -lock=false 2>&1 | tee destroy.log
           
           echo "### Phase 2: Destroying cluster unit" >> $GITHUB_STEP_SUMMARY
-          terragrunt run destroy --terragrunt-working-dir cluster -- -lock=false 2>&1 | tee cluster-destroy.log
+          cd cluster
+          terragrunt run destroy -- -lock=false 2>&1 | tee cluster-destroy.log
+          cd ..
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ **Stack destruction completed**" >> $GITHUB_STEP_SUMMARY
