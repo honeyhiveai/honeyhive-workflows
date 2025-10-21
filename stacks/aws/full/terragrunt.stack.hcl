@@ -10,50 +10,50 @@ unit "vpc" {
 unit "dns" {
   source = "../../../units/substrate/dns"
   path   = "substrate/dns"
-  
+
 }
 
 unit "twingate" {
   source = "../../../units/substrate/twingate"
   path   = "substrate/twingate"
-  
+
 }
 
 # Hosting Layer
 unit "cluster" {
   source = "../../../units/hosting/cluster"
   path   = "hosting/cluster"
-  
+
 }
 
 unit "karpenter" {
   source = "../../../units/hosting/karpenter"
   path   = "hosting/karpenter"
-  
+
 }
 
 unit "addons" {
   source = "../../../units/hosting/addons"
   path   = "hosting/addons"
-  
+
 }
 
 unit "pod_identities" {
   source = "../../../units/hosting/pod_identities"
   path   = "hosting/pod_identities"
-  
+
 }
 
 # Application Layer
 unit "database" {
   source = "../../../units/application/database"
   path   = "application/database"
-  
+
 }
 
 unit "s3" {
   source = "../../../units/application/s3"
   path   = "application/s3"
-  
+
 }
 

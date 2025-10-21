@@ -11,7 +11,7 @@ include "tenant_config" {
 generate "provider" {
   path      = "provider.tf"
   if_exists = "overwrite_terragrunt"
-  
+
   contents = <<EOF
 provider "aws" {
   region = "${include.tenant_config.locals.region}"

@@ -144,7 +144,7 @@ if [ -f "stacks/aws/substrate.stack.yaml" ] && \
   echo -e "${GREEN}✅ Structure is ready for substrate stack testing!${NC}"
   echo ""
   echo "Next steps:"
-  echo "1. Set TENANT_CONFIG_PATH to your config file"
+  echo "1. Set CONFIG_PATH to your config file"
   echo "2. Run: terragrunt stack init --stack stacks/aws/substrate.stack.yaml"
   echo "3. Run: terragrunt stack plan --stack stacks/aws/substrate.stack.yaml"
 else

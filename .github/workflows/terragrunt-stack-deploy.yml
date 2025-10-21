@@ -55,6 +55,16 @@ on:
         required: false
         type: string
         default: ''
+      include_external:
+        description: "Include external dependencies (substrate↔hosting, etc)."
+        required: false
+        default: true
+        type: boolean
+      queue_max_parallelism:
+        description: "Cap parallelism across the DAG (1 = fully serial)."
+        required: false
+        default: 4
+        type: number
     
     secrets:
       GITHUB_APP_ID:
@@ -75,7 +85,13 @@ jobs:
       id-token: write  # For AWS OIDC authentication
       contents: read   # For repository access
       pull-requests: write  # For PR comments
-    
+
+    env:
+      TERRAGRUNT_NON_INTERACTIVE: "true"
+      TERRAGRUNT_INCLUDE_DEPENDENCY_OUTPUTS: "true"
+      TERRAGRUNT_LOG_LEVEL: info
+      CONFIG_PATH: ${{ inputs.config_path }}
+
     steps:
       - name: Generate GitHub App Token
         id: app-token
@@ -106,283 +122,105 @@ jobs:
           requirements_file: workflow-repo/scripts/requirements.txt
           cache_dependencies: 'true'
       
-      - name: Extract configuration
-        id: extract_config
-        run: |
-          CONFIG_FILE="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
-          
-          if [ ! -f "$CONFIG_FILE" ]; then
-            echo "❌ Configuration file not found: $CONFIG_FILE"
-            exit 1
-          fi
-          
-          # Extract key values using Python (more reliable than yq)
-          ACCOUNT_ID=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_FILE'))['account_id'])")
-          REGION=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_FILE'))['region'])")
-          SREGION=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_FILE'))['sregion'])")
-          ENVIRONMENT=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_FILE'))['env'])")
-          DEPLOYMENT=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_FILE'))['deployment'])")
-          DEPLOYMENT_TYPE=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_FILE')).get('deployment_type', 'full_stack'))")
-          
-          # Set outputs
-          echo "account_id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
-          echo "region=$REGION" >> $GITHUB_OUTPUT
-          echo "sregion=$SREGION" >> $GITHUB_OUTPUT
-          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
-          echo "deployment=$DEPLOYMENT" >> $GITHUB_OUTPUT
-          echo "deployment_type=$DEPLOYMENT_TYPE" >> $GITHUB_OUTPUT
-          
-          # Display configuration summary using select-stack.py for rich output
-          echo "### 📋 Configuration Analysis" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          cd ${{ github.workspace }}/workflow-repo
-          ./scripts/select-stack.py "$CONFIG_FILE" | head -20 >> $GITHUB_STEP_SUMMARY || echo "Unable to analyze config"
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Stack**: \`${{ inputs.stack }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Action**: \`${{ inputs.action }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Deployment Type**: \`$DEPLOYMENT_TYPE\`" >> $GITHUB_STEP_SUMMARY
-      
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ inputs.aws_oidc_role || vars.AWS_OIDC_ROLE }}
           role-session-name: terragrunt-stack-${{ github.run_id }}
-          aws-region: ${{ steps.extract_config.outputs.region }}
+          aws-region: us-west-2
       
       - name: Setup Terragrunt
         uses: ./workflow-repo/actions/setup-terragrunt
         with:
           terraform_version: '1.9.8'
           terragrunt_version: '0.91.1'
-      
+
       - name: Setup Git credentials for Terraform
         run: |
           git config --global credential.helper store
           echo "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com" > ~/.git-credentials
           echo "✅ Git credentials configured for Terraform/Terragrunt module access"
       
-      - name: Initialize Stack
+      - name: Print tenant config
         run: |
-          set -euo pipefail  # Exit on error, undefined vars, and pipe failures
-          cd ${{ github.workspace }}/workflow-repo
+          echo "TENANT_CONFIG_PATH=$TENANT_CONFIG_PATH"
+          test -f "$TENANT_CONFIG_PATH" || (echo "Tenant config not found" && exit 1)
+          echo '---'; sed -n '1,120p' "$TENANT_CONFIG_PATH" || true
           
-          # Export configuration path for units to access
-          export TENANT_CONFIG_PATH="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
           
-          # Determine stack file based on input
+      - name: Select working directory
+        id: select-dir
+        run: |
           case "${{ inputs.stack }}" in
-            substrate)
-              STACK_DIR="stacks/aws/substrate"
+          substrate|hosting|application|full)
+          echo "dir=stacks/aws/${{ inputs.stack }}" >> "$GITHUB_OUTPUT" ;;
+          *)
+          echo "Unsupported stack: ${{ inputs.stack }}" >&2; exit 64 ;;
+          esac
+
+
+      - name: Validate stack graph
+        continue-on-error: false
+        working-directory: ${{ steps.select-dir.outputs.dir }}
+        run: |
+          terragrunt dag graph \
+            --terragrunt-include-external-dependencies=${{ inputs.include_external }} \
+            --terragrunt-queue-max-parallelism=${{ inputs.queue_max_parallelism }}
+
+
+
+      - name: Terragrunt ${{ inputs.action }}
+        working-directory: ${{ steps.select-dir.outputs.dir }}
+        env:
+          # Terragrunt will render units into .terragrunt-stack/; abspath in your include guards handle that.
+          TG_PARALLELISM: ${{ inputs.queue_max_parallelism }}
+        run: |
+          case "${{ inputs.action }}" in
+            validate)
+              terragrunt stack run validate \
+                --terragrunt-include-external-dependencies=${{ inputs.include_external }} \
+                --terragrunt-queue-max-parallelism=${{ inputs.queue_max_parallelism }}
               ;;
-            hosting)
-              STACK_DIR="stacks/aws/hosting"
+            plan)
+              terragrunt stack run plan \
+                --terragrunt-include-external-dependencies=${{ inputs.include_external }} \
+                --terragrunt-queue-max-parallelism=${{ inputs.queue_max_parallelism }} \
+                -- -lock-timeout=10m -input=false
               ;;
-            application)
-              STACK_DIR="stacks/aws/application"
+            apply)
+              terragrunt stack run apply \
+                --terragrunt-include-external-dependencies=${{ inputs.include_external }} \
+                --terragrunt-queue-max-parallelism=${{ inputs.queue_max_parallelism }} \
+                -- -auto-approve -lock-timeout=10m -input=false
               ;;
-            full)
-              STACK_DIR="stacks/aws/full"
+            destroy)
+              terragrunt stack run destroy \
+                --terragrunt-include-external-dependencies=${{ inputs.include_external }} \
+                --terragrunt-queue-max-parallelism=${{ inputs.queue_max_parallelism }} \
+                -- -auto-approve -lock-timeout=10m -input=false
               ;;
-            *)
-              echo "❌ Invalid stack: ${{ inputs.stack }}"
-              exit 1
-              ;;
+            *) echo "Unsupported action: ${{ inputs.action }}" >&2; exit 64 ;;
           esac
           
-          # Update Terraform module references to use specified version
-          find units/ -name "terragrunt.hcl" -type f -exec \
-            sed -i "s/?ref=v[0-9.]\+/?ref=${{ inputs.terraform_ref }}/g" {} +
           
-          echo "### 🚀 Stack Deployment" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Using stack file: \`$STACK_DIR\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+      - name: Upload DAG (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terragrunt-dag-${{ inputs.stack }}-${{ github.run_id }}
+          path: ${{ steps.select-dir.outputs.dir }}/terragrunt-dependency-graph.dot
+          if-no-files-found: ignore
           
-          # Generate and initialize the stack
-          echo "Generating and initializing stack..."
-          cd "$STACK_DIR"
-          terragrunt stack run init
-        env:
-          TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
-          TERRAFORM_REF: ${{ inputs.terraform_ref }}
-          TF_INPUT: 'false'
-          TF_IN_AUTOMATION: '1'
-          TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
-          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
-      
-      - name: Terragrunt Plan
-        if: inputs.action == 'plan' || (inputs.action != 'destroy' && !inputs.auto_approve)
-        run: |
-          set -euo pipefail  # Exit on error, undefined vars, and pipe failures
-          cd ${{ github.workspace }}/workflow-repo
           
-          export TENANT_CONFIG_PATH="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
-          
-          # Determine stack file
-          case "${{ inputs.stack }}" in
-            substrate) STACK_DIR="stacks/aws/substrate" ;;
-            hosting) STACK_DIR="stacks/aws/hosting" ;;
-            application) STACK_DIR="stacks/aws/application" ;;
-            full) STACK_DIR="stacks/aws/full" ;;
-          esac
-          
-          echo "### 📋 Planning Stack Changes" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          # Run plan for the stack (pipefail ensures we catch terragrunt failures)
-          cd "$STACK_DIR"
-          # Skip state locking for dev/test environments (single user)
-          # Use phased deployment: cluster first, then other units
-          echo "### Phase 1: Planning cluster unit" >> $GITHUB_STEP_SUMMARY
-          cd ../../../units/hosting/cluster
-          terragrunt run plan -- -lock=false 2>&1 | tee cluster-plan.log
-          cd - > /dev/null
-          
-          echo "### Phase 2: Planning remaining units" >> $GITHUB_STEP_SUMMARY
-          terragrunt stack run plan -- -lock=false 2>&1 | tee plan.log
-          
-          # Extract summary from plan
-          if grep -q "No changes" plan.log; then
-            echo "✅ **No changes required** - Infrastructure is up-to-date" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "🔄 **Changes detected** - Review the plan output above" >> $GITHUB_STEP_SUMMARY
-          fi
-        env:
-          TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
-          TERRAFORM_REF: ${{ inputs.terraform_ref }}
-          TF_INPUT: 'false'
-          TF_IN_AUTOMATION: '1'
-          TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
-          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
-      
-      - name: Terragrunt Apply
-        if: inputs.action == 'apply' && inputs.auto_approve
-        run: |
-          set -euo pipefail  # Exit on error, undefined vars, and pipe failures
-          cd ${{ github.workspace }}/workflow-repo
-          
-          export TENANT_CONFIG_PATH="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
-          
-          # Determine stack file
-          case "${{ inputs.stack }}" in
-            substrate) STACK_DIR="stacks/aws/substrate" ;;
-            hosting) STACK_DIR="stacks/aws/hosting" ;;
-            application) STACK_DIR="stacks/aws/application" ;;
-            full) STACK_DIR="stacks/aws/full" ;;
-          esac
-          
-          echo "### ✅ Applying Stack Changes" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          # Apply the stack changes (pipefail ensures we catch terragrunt failures)
-          cd "$STACK_DIR"
-          # Skip state locking for dev/test environments (single user)
-          # Use phased deployment: cluster first, then other units
-          echo "### Phase 1: Applying cluster unit" >> $GITHUB_STEP_SUMMARY
-          cd ../../../units/hosting/cluster
-          terragrunt run apply -- -auto-approve -lock=false 2>&1 | tee cluster-apply.log
-          cd - > /dev/null
-          
-          echo "### Phase 2: Applying remaining units" >> $GITHUB_STEP_SUMMARY
-          terragrunt stack run apply -- -auto-approve -lock=false 2>&1 | tee apply.log
-          
-          # Check for failures in the output
-          if grep -q "Failed\s\+[1-9]" apply.log || grep -q "ERROR" apply.log; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "❌ **Stack deployment failed - check logs above**" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ **Stack deployment completed successfully**" >> $GITHUB_STEP_SUMMARY
-        env:
-          TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
-          TERRAFORM_REF: ${{ inputs.terraform_ref }}
-          TF_INPUT: 'false'
-          TF_IN_AUTOMATION: '1'
-          TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
-          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
-      
-      - name: Cleanup Karpenter Nodes (Pre-Destroy)
-        if: inputs.action == 'destroy' && inputs.auto_approve && (inputs.stack == 'hosting' || inputs.stack == 'full')
-        run: |
-          set -euo pipefail
-          cd ${{ github.workspace }}/workflow-repo
-          
-          # Extract cluster name from config
-          CONFIG_PATH="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
-          ORG=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH'))['org'])")
-          ENV=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH'))['env'])")
-          SREGION=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH'))['sregion'])")
-          DEPLOYMENT=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH'))['deployment'])")
-          REGION=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH'))['region'])")
-          
-          CLUSTER_NAME="${ORG}-${ENV}-${SREGION}-${DEPLOYMENT}"
-          
-          echo "🧹 Cleaning up Karpenter-provisioned nodes before destroy"
-          echo "Cluster: $CLUSTER_NAME"
-          echo ""
-          
-          chmod +x scripts/cleanup-karpenter-nodes.sh
-          ./scripts/cleanup-karpenter-nodes.sh "$CLUSTER_NAME" "$REGION" || echo "⚠️ Node cleanup failed or no nodes found - continuing with destroy"
-        env:
-          AWS_DEFAULT_REGION: ${{ steps.extract_config.outputs.region }}
-      
-      - name: Terragrunt Destroy
-        if: inputs.action == 'destroy' && inputs.auto_approve
-        run: |
-          set -euo pipefail  # Exit on error, undefined vars, and pipe failures
-          cd ${{ github.workspace }}/workflow-repo
-          
-          export TENANT_CONFIG_PATH="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
-          
-          # Determine stack file
-          case "${{ inputs.stack }}" in
-            substrate) STACK_DIR="stacks/aws/substrate" ;;
-            hosting) STACK_DIR="stacks/aws/hosting" ;;
-            application) STACK_DIR="stacks/aws/application" ;;
-            full) STACK_DIR="stacks/aws/full" ;;
-          esac
-          
-          echo "### 🗑️ Destroying Stack Resources" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "⚠️ **WARNING**: Destroying infrastructure resources" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          # Destroy the stack (pipefail ensures we catch terragrunt failures)
-          cd "$STACK_DIR"
-          # Skip state locking for dev/test environments (single user)
-          # Use phased destruction: other units first, then cluster
-          echo "### Phase 1: Destroying non-cluster units" >> $GITHUB_STEP_SUMMARY
-          terragrunt stack run destroy -- -auto-approve -lock=false 2>&1 | tee destroy.log
-          
-          echo "### Phase 2: Destroying cluster unit" >> $GITHUB_STEP_SUMMARY
-          cd ../../../units/hosting/cluster
-          terragrunt run destroy -- -auto-approve -lock=false 2>&1 | tee cluster-destroy.log
-          cd - > /dev/null
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ **Stack destruction completed**" >> $GITHUB_STEP_SUMMARY
-        env:
-          TENANT_CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml
-          TERRAFORM_REF: ${{ inputs.terraform_ref }}
-          TF_INPUT: 'false'
-          TF_IN_AUTOMATION: '1'
-          TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
-          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
-      
-      - name: Stack Output Summary
+      - name: Post summary
         if: always()
         run: |
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "---" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📊 Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Workflow**: Stack Deploy" >> $GITHUB_STEP_SUMMARY
-          echo "- **Stack**: ${{ inputs.stack }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Action**: ${{ inputs.action }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Run ID**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### Terragrunt Stack Deploy";
+            echo "- **Stack**: ${{ inputs.stack }}";
+            echo "- **Action**: ${{ inputs.action }}";
+            echo "- **Tenant config**: ${{ inputs.environment }}";
+            echo "- **Include external deps**: ${{ inputs.include_external }}";
+            echo "- **Max parallelism**: ${{ inputs.queue_max_parallelism }}";
+            echo "- **Status**: ${{ job.status }}";
+          } >> $GITHUB_STEP_SUMMARY
