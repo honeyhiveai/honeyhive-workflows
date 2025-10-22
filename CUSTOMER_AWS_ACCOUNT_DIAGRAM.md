@@ -9,49 +9,49 @@ graph TB
     subgraph "Your AWS Account"
         subgraph "VPC 10.x.0.0/16"
             subgraph "Public Subnets"
-                ALB[⚖️ Application Load Balancer<br/>honeyhive-alb-{env}]
-                NAT[🌐 NAT Gateway<br/>honeyhive-nat-{env}]
-                VPN[🔐 Twingate Connector<br/>honeyhive-vpn-{env}]
+                ALB["⚖️ Application Load Balancer<br/>honeyhive-alb-{env}"]
+                NAT["🌐 NAT Gateway<br/>honeyhive-nat-{env}"]
+                VPN["🔐 Twingate Connector<br/>honeyhive-vpn-{env}"]
             end
             
             subgraph "Private Subnets"
                 subgraph "EKS Cluster: honeyhive-{env}"
-                    EKS[☸️ EKS Control Plane<br/>Managed by AWS]
-                    WORKERS[🖥️ Worker Nodes<br/>honeyhive-nodes-{env}]
-                    KARP[📈 Karpenter<br/>honeyhive-karpenter-{env}]
+                    EKS["☸️ EKS Control Plane<br/>Managed by AWS"]
+                    WORKERS["🖥️ Worker Nodes<br/>honeyhive-nodes-{env}"]
+                    KARP["📈 Karpenter<br/>honeyhive-karpenter-{env}"]
                 end
                 
                 subgraph "HoneyHive Services"
-                    API[🔌 HoneyHive API<br/>honeyhive-api-{env}]
-                    UI[🖥️ HoneyHive UI<br/>honeyhive-ui-{env}]
-                    WORKER[⚙️ Background Workers<br/>honeyhive-workers-{env}]
+                    API["🔌 HoneyHive API<br/>honeyhive-api-{env}"]
+                    UI["🖥️ HoneyHive UI<br/>honeyhive-ui-{env}"]
+                    WORKER["⚙️ Background Workers<br/>honeyhive-workers-{env}"]
                 end
                 
                 subgraph "Observability Stack"
-                    PROM[📊 Prometheus<br/>honeyhive-prometheus-{env}]
-                    GRAFANA[📈 Grafana<br/>honeyhive-grafana-{env}]
-                    FLUENT[📝 Fluent Bit<br/>honeyhive-fluent-{env}]
+                    PROM["📊 Prometheus<br/>honeyhive-prometheus-{env}"]
+                    GRAFANA["📈 Grafana<br/>honeyhive-grafana-{env}"]
+                    FLUENT["📝 Fluent Bit<br/>honeyhive-fluent-{env}"]
                 end
                 
                 subgraph "Data Layer"
-                    RDS[🗄️ RDS PostgreSQL<br/>honeyhive-db-{env}]
-                    S3[📦 S3 Buckets<br/>honeyhive-*-{env}]
-                    REDIS[🔴 Redis Cache<br/>honeyhive-redis-{env}]
+                    RDS["🗄️ RDS PostgreSQL<br/>honeyhive-db-{env}"]
+                    S3["📦 S3 Buckets<br/>honeyhive-*-{env}"]
+                    REDIS["🔴 Redis Cache<br/>honeyhive-redis-{env}"]
                 end
             end
         end
         
         subgraph "AWS Services"
-            KMS[🔐 KMS Key<br/>honeyhive-encryption-{env}]
-            SECRETS[🔑 Secrets Manager<br/>honeyhive-secrets-{env}]
-            CLOUDWATCH[📊 CloudWatch<br/>honeyhive-monitoring-{env}]
+            KMS["🔐 KMS Key<br/>honeyhive-encryption-{env}"]
+            SECRETS["🔑 Secrets Manager<br/>honeyhive-secrets-{env}"]
+            CLOUDWATCH["📊 CloudWatch<br/>honeyhive-monitoring-{env}"]
         end
     end
     
     subgraph "External Access"
-        USERS[👥 Your Users]
-        TWINGATE[🔐 Twingate VPN]
-        GITHUB[🐙 GitHub Actions]
+        USERS["👥 Your Users"]
+        TWINGATE["🔐 Twingate VPN"]
+        GITHUB["🐙 GitHub Actions"]
     end
     
     %% User access
