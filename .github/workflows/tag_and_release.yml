@@ -43,7 +43,7 @@ jobs:
             echo "::warning::No version hashtag found. Skipping release creation."
             echo "Add one of #major #minor #patch to the PR title for automatic versioning."
           else
-            echo "✅ New version tag: ${{ steps.bump.outputs.new_tag }}"
+            echo " New version tag: ${{ steps.bump.outputs.new_tag }}"
           fi
 
   create-github-release:
@@ -104,7 +104,7 @@ jobs:
 
       - name: Post-release summary
         run: |
-          echo "## 🎉 Release Created Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "##  Release Created Successfully" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ needs.determine-version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

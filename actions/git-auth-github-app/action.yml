@@ -17,4 +17,4 @@ runs:
         # Set safe directory for GitHub Actions
         git config --global --add safe.directory '*'
         
-        echo "✅ Git credentials configured for Terraform/Terragrunt module access"
+        echo " Git credentials configured for Terraform/Terragrunt module access"

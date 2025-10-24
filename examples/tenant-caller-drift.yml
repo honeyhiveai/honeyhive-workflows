@@ -74,22 +74,22 @@ jobs:
     steps:
       - name: Generate summary report
         run: |
-          echo "## 🔍 Drift Detection Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## Drift Detection Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Run Type:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           if [[ "${{ needs.drift_check.result }}" == "success" ]]; then
-            echo "### ✅ All drift checks completed successfully" >> $GITHUB_STEP_SUMMARY
+            echo "### All drift checks completed successfully" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Check individual job results for drift status." >> $GITHUB_STEP_SUMMARY
           elif [[ "${{ needs.drift_check.result }}" == "failure" ]]; then
-            echo "### ⚠️ Some drift checks failed or detected drift" >> $GITHUB_STEP_SUMMARY
+            echo "### Some drift checks failed or detected drift" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Review the individual job results and created issues." >> $GITHUB_STEP_SUMMARY
           else
-            echo "### ❌ Drift detection was cancelled or skipped" >> $GITHUB_STEP_SUMMARY
+            echo "### Drift detection was cancelled or skipped" >> $GITHUB_STEP_SUMMARY
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY

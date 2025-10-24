@@ -101,7 +101,7 @@ jobs:
           echo "TENANT_CONFIG_PATH=$TENANT_CONFIG_PATH" >> $GITHUB_ENV
           echo "TG_GRAPH_DIR=${{ github.workspace }}/_catalog/graphs/${{ inputs.graph }}" >> $GITHUB_ENV
           
-          echo "## 🚀 Terragrunt Apply" >> $GITHUB_STEP_SUMMARY
+          echo "##  Terragrunt Apply" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Stack:** \`${{ inputs.stack_path }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Graph:** \`${{ inputs.graph }}\`" >> $GITHUB_STEP_SUMMARY
@@ -131,16 +131,16 @@ jobs:
       - name: Apply summary
         if: always()
         run: |
-          echo "### 📊 Apply Results" >> $GITHUB_STEP_SUMMARY
+          echo "###  Apply Results" >> $GITHUB_STEP_SUMMARY
           if [[ "${{ steps.apply.outcome }}" == "success" ]]; then
-            echo "✅ Apply completed successfully" >> $GITHUB_STEP_SUMMARY
+            echo " Apply completed successfully" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "All layers deployed in dependency order:" >> $GITHUB_STEP_SUMMARY
             echo "1. Substrate (VPC, DNS, Twingate)" >> $GITHUB_STEP_SUMMARY
             echo "2. Hosting (Cluster, Karpenter, Pod Identities, Addons)" >> $GITHUB_STEP_SUMMARY
             echo "3. Application (Database, S3)" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ Apply failed" >> $GITHUB_STEP_SUMMARY
+            echo " Apply failed" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "[View full apply output](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
@@ -153,7 +153,7 @@ jobs:
           TENANT_CONFIG_PATH: ${{ env.TENANT_CONFIG_PATH }}
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🔍 Post-Apply Validation" >> $GITHUB_STEP_SUMMARY
+          echo "###  Post-Apply Validation" >> $GITHUB_STEP_SUMMARY
           
           # Count resources across all states
           TOTAL_RESOURCES=0
@@ -165,7 +165,7 @@ jobs:
           done
           
           if [[ $TOTAL_RESOURCES -gt 0 ]]; then
-            echo "✅ State verified: $TOTAL_RESOURCES total resources tracked across all layers" >> $GITHUB_STEP_SUMMARY
+            echo " State verified: $TOTAL_RESOURCES total resources tracked across all layers" >> $GITHUB_STEP_SUMMARY
           else
-            echo "⚠️ Unable to verify state" >> $GITHUB_STEP_SUMMARY
+            echo " Unable to verify state" >> $GITHUB_STEP_SUMMARY
           fi

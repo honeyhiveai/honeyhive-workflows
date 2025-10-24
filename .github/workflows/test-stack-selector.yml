@@ -43,7 +43,7 @@ jobs:
       
       - name: Test --list flag
         run: |
-          echo "### 📋 Available Deployment Types" >> $GITHUB_STEP_SUMMARY
+          echo "### Available Deployment Types" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "```" >> $GITHUB_STEP_SUMMARY
           ./scripts/select-stack.py --list >> $GITHUB_STEP_SUMMARY
@@ -52,22 +52,22 @@ jobs:
       
       - name: Validate all deployment configs
         run: |
-          echo "### ✅ Validating Deployment Configurations" >> $GITHUB_STEP_SUMMARY
+          echo "### Validating Deployment Configurations" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           # Test each deployment config
           for config in stacks/deployment-types/configs/*.yaml; do
             if [ -f "$config" ]; then
               echo "Testing $(basename $config)..." 
-              python3 -c "import yaml, sys; f=open('$config'); data=yaml.safe_load(f); f.close(); req=['name','description','stack_file','components','features']; miss=[r for r in req if r not in data]; print(f'  ❌ Missing: {miss}' if miss else '  ✅ Valid'); sys.exit(1 if miss else 0)" || exit 1
-              echo "- ✅ $(basename $config)" >> $GITHUB_STEP_SUMMARY
+              python3 -c "import yaml, sys; f=open('$config'); data=yaml.safe_load(f); f.close(); req=['name','description','stack_file','components','features']; miss=[r for r in req if r not in data]; print(f'  Missing: {miss}' if miss else '  Valid'); sys.exit(1 if miss else 0)" || exit 1
+              echo "-  $(basename $config)" >> $GITHUB_STEP_SUMMARY
             fi
           done
           echo "" >> $GITHUB_STEP_SUMMARY
       
       - name: Test with example configs
         run: |
-          echo "### 🧪 Testing Example Configurations" >> $GITHUB_STEP_SUMMARY
+          echo "###  Testing Example Configurations" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           # Test each example config
@@ -84,7 +84,7 @@ jobs:
       - name: Test specific config (if provided)
         if: github.event_name == 'workflow_dispatch' && inputs.config_file != ''
         run: |
-          echo "### 🎯 Testing Specific Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "###  Testing Specific Configuration" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Config file: \`${{ inputs.config_file }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -94,7 +94,7 @@ jobs:
             ./scripts/select-stack.py "${{ inputs.config_file }}" >> $GITHUB_STEP_SUMMARY
             echo "```" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ Configuration file not found: ${{ inputs.config_file }}" >> $GITHUB_STEP_SUMMARY
+            echo " Configuration file not found: ${{ inputs.config_file }}" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
       
@@ -111,7 +111,7 @@ jobs:
           
       - name: Check Python imports
         run: |
-          echo "### 🐍 Python Import Check" >> $GITHUB_STEP_SUMMARY
+          echo "###  Python Import Check" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
-          python3 -c "import sys; exec('try:\n    import yaml, rich, click\n    from rich.console import Console\n    from rich.table import Table\n    print(\"✅ All required imports successful\")\nexcept ImportError as e:\n    print(f\"❌ Import error: {e}\")\n    sys.exit(1)')" >> $GITHUB_STEP_SUMMARY
+          python3 -c "import sys; exec('try:\n    import yaml, rich, click\n    from rich.console import Console\n    from rich.table import Table\n    print(\" All required imports successful\")\nexcept ImportError as e:\n    print(f\" Import error: {e}\")\n    sys.exit(1)')" >> $GITHUB_STEP_SUMMARY

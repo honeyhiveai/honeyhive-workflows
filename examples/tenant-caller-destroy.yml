@@ -31,7 +31,7 @@ jobs:
             echo "::error::You must type 'DESTROY' to confirm the destruction of ${{ inputs.stack_path }}"
             exit 1
           fi
-          echo "⚠️ Destruction confirmed for: ${{ inputs.stack_path }}"
+          echo "Destruction confirmed for: ${{ inputs.stack_path }}"
       
       # Call the reusable destroy workflow
       # Destroys all layers in reverse dependency order
