@@ -5,7 +5,7 @@ set -euo pipefail
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 echo "================================================"
 echo "    Terragrunt Stack Structure Validation"
@@ -13,7 +13,7 @@ echo "================================================"
 echo ""
 
 # Check directory structure
-echo "📁 Checking directory structure..."
+echo "Checking directory structure..."
 
 REQUIRED_DIRS=(
   "stacks/aws"
@@ -33,7 +33,7 @@ for dir in "${REQUIRED_DIRS[@]}"; do
 done
 
 echo ""
-echo "📄 Checking stack definitions..."
+echo " Checking stack definitions..."
 
 STACK_FILES=(
   "stacks/aws/substrate.stack.yaml"
@@ -141,13 +141,13 @@ if [ -f "stacks/aws/substrate.stack.yaml" ] && \
    [ -d "units/substrate/vpc-next" ] && \
    [ -d "units/substrate/dns-next" ] && \
    [ -f "includes/tenant-config.hcl" ]; then
-  echo -e "${GREEN}✅ Structure is ready for substrate stack testing!${NC}"
+  echo -e "${GREEN} Structure is ready for substrate stack testing!${NC}"
   echo ""
   echo "Next steps:"
   echo "1. Set CONFIG_PATH to your config file"
   echo "2. Run: terragrunt stack init --stack stacks/aws/substrate.stack.yaml"
   echo "3. Run: terragrunt stack plan --stack stacks/aws/substrate.stack.yaml"
 else
-  echo -e "${RED}❌ Structure is not complete${NC}"
+  echo -e "${RED} Structure is not complete${NC}"
   exit 1
 fi

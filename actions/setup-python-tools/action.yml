@@ -42,7 +42,7 @@ runs:
     - name: Install Python dependencies
       shell: bash
       run: |
-        echo "📦 Installing Python dependencies..."
+        echo "Installing Python dependencies..."
         python -m pip install --upgrade pip
         
         # Check if requirements file exists
@@ -55,7 +55,7 @@ runs:
         fi
         
         echo ""
-        echo "✅ Python dependencies installed successfully"
+        echo "Python dependencies installed successfully"
         
     - name: Verify installations
       shell: bash

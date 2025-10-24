@@ -55,7 +55,7 @@ generate "provider" {
   EOF
 }
 
-# TODO: Implement Azure remote state backend
+
 # For now, this is commented out as a placeholder
 #
 # remote_state {
@@ -68,7 +68,7 @@ generate "provider" {
 #   }
 # }
 
-# Terraform version constraints
+
 terraform_version_constraint  = ">= 1.9.0"
 terragrunt_version_constraint = ">= 0.66.0"
 
@@ -76,6 +76,6 @@ terragrunt_version_constraint = ">= 0.66.0"
 terraform {
   before_hook "azure_stub_warning" {
     commands = ["plan", "apply", "destroy"]
-    execute  = ["bash", "-c", "echo '⚠️  Warning: Azure overlay is a stub implementation. Full Azure support coming soon.'"]
+    execute  = ["bash", "-c", "echo 'Warning: Azure overlay is a stub implementation. Full Azure support coming soon.'"]
   }
 }

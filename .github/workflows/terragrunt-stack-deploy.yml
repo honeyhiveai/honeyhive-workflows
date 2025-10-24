@@ -144,7 +144,7 @@ jobs:
         run: |
           git config --global credential.helper store
           echo "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com" > ~/.git-credentials
-          echo "✅ Git credentials configured for Terraform/Terragrunt module access"
+          echo "Git credentials configured for Terraform/Terragrunt module access"
       
       - name: Print tenant config
         run: |

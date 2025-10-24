@@ -1,4 +1,4 @@
-# ⚠️ DEPRECATED - Tenants no longer manage Terragrunt files!
+#  DEPRECATED - Tenants no longer manage Terragrunt files!
 #
 # This file is kept for reference only. In the new federated catalog model:
 # - Tenants only create tenant.yaml (configuration data)
