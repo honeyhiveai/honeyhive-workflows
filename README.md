@@ -315,4 +315,8 @@ See the `examples/` directory for:
 
 3. **Overlay not found**
    - Ensure `overlay_ref` is specified
-   - Check catalog
+   - Check catalog checkout step
+
+##  License
+
+[Internal Use Only - Honeyhive Proprietary]
