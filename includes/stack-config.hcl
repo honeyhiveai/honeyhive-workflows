@@ -19,7 +19,7 @@ locals {
 
   # Features and configuration
   features      = try(local.cfg.features, {})
-  terraform_ref = try(local.cfg.terraform_ref, get_env("TERRAFORM_REF", "v0.2.15"))
+  terraform_ref = try(local.cfg.terraform_ref, get_env("TERRAFORM_REF", "v0.8.1"))
 
   # Common tags
   common_tags = {

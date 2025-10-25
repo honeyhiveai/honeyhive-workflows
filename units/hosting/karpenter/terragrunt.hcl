@@ -15,24 +15,22 @@ dependencies {
 dependency "cluster" {
   config_path = "../cluster"
 
-  # Mock outputs for first deployment when cluster doesn't exist yet
-  mock_outputs_allowed_terraform_commands = ["plan", "state"]
-  mock_outputs_merge_strategy_with_state = "shallow"
+  mock_outputs_allowed_terraform_commands = ["validate", "plan", "graph", "state"]
   mock_outputs = {
-    cluster_endpoint                  = "https://${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}.gr7.${include.root.locals.region}.eks.amazonaws.com"
+    cluster_name                       = "${include.root.locals.name_prefix}"
+    cluster_endpoint                   = "https://${include.root.locals.name_prefix}.gr7.${include.root.locals.region}.eks.amazonaws.com"
     cluster_certificate_authority_data = "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t"
-    karpenter_node_role_arn           = "arn:aws:iam::${include.root.locals.account_id}:role/${include.root.locals.org}${title(include.root.locals.env)}${upper(include.root.locals.sregion)}${title(include.root.locals.deployment)}KarpenterNode"
-    karpenter_node_role_name          = "${include.root.locals.org}${title(include.root.locals.env)}${upper(include.root.locals.sregion)}${title(include.root.locals.deployment)}KarpenterNode"
-    oidc_provider_arn                 = "arn:aws:iam::${include.root.locals.account_id}:oidc-provider/oidc.eks.${include.root.locals.region}.amazonaws.com/id/00000000000000000000000000000000"
-    ebs_csi_driver_role_arn           = "arn:aws:iam::${include.root.locals.account_id}:role/${include.root.locals.org}${title(include.root.locals.env)}${upper(include.root.locals.sregion)}${title(include.root.locals.deployment)}EbsCsiDriver"
+    karpenter_node_role_arn            = "arn:aws:iam::${include.root.locals.account_id}:role/${include.root.locals.org}${title(include.root.locals.env)}${upper(include.root.locals.sregion)}${title(include.root.locals.deployment)}KarpenterNode"
+    karpenter_node_role_name           = "${include.root.locals.org}${title(include.root.locals.env)}${upper(include.root.locals.sregion)}${title(include.root.locals.deployment)}KarpenterNode"
+    oidc_provider_arn                  = "arn:aws:iam::${include.root.locals.account_id}:oidc-provider/oidc.eks.${include.root.locals.region}.amazonaws.com/id/00000000000000000000000000000000"
+    ebs_csi_driver_role_arn            = "arn:aws:iam::${include.root.locals.account_id}:role/${include.root.locals.org}${title(include.root.locals.env)}${upper(include.root.locals.sregion)}${title(include.root.locals.deployment)}EbsCsiDriver"
   }
-
-  # Skip outputs during destroy to avoid dependency issues
+ # Skip outputs during destroy to avoid dependency issues
   skip_outputs = false
 }
 
 terraform {
-  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/kubernetes/karpenter?ref=v1.2.16"
+  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/kubernetes/karpenter?ref=${include.root.locals.terraform_ref}"
 }
 
 inputs = {
@@ -55,15 +53,14 @@ inputs = {
   cluster_name = "${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}"
 
   # Use dependency outputs - Karpenter will only run when cluster exists
-  cluster_endpoint                  = dependency.cluster.outputs.cluster_endpoint
+  cluster_endpoint                   = dependency.cluster.outputs.cluster_endpoint
   cluster_certificate_authority_data = dependency.cluster.outputs.cluster_certificate_authority_data
-  karpenter_node_role_arn           = dependency.cluster.outputs.karpenter_node_role_arn
-  karpenter_node_role_name          = dependency.cluster.outputs.karpenter_node_role_name
-  oidc_provider_arn                 = dependency.cluster.outputs.oidc_provider_arn
-  ebs_csi_driver_role_arn           = dependency.cluster.outputs.ebs_csi_driver_role_arn
+  karpenter_node_role_arn            = dependency.cluster.outputs.karpenter_node_role_arn
+  karpenter_node_role_name           = dependency.cluster.outputs.karpenter_node_role_name
+  oidc_provider_arn                  = dependency.cluster.outputs.oidc_provider_arn
+  ebs_csi_driver_role_arn            = dependency.cluster.outputs.ebs_csi_driver_role_arn
 
   # Karpenter configuration
-  # Re-enabled now that cluster is clean
   deploy_karpenter_controller = try(include.root.locals.cfg.deploy_karpenter, true)
 }
 

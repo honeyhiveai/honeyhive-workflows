@@ -19,7 +19,9 @@ dependency "cluster" {
 
   # Mock outputs for first deployment when cluster doesn't exist yet
   mock_outputs = {
+    cluster_name      = "${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}"
     cluster_endpoint  = "https://${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}.gr7.${include.root.locals.region}.eks.amazonaws.com"
+    cluster_certificate_authority_data = "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t"
     oidc_provider_arn = "arn:aws:iam::${include.root.locals.account_id}:oidc-provider/oidc.eks.${include.root.locals.region}.amazonaws.com/id/00000000000000000000000000000000"
   }
 
@@ -49,11 +51,12 @@ inputs = {
 
   # Cluster info - computed from config (dependency outputs don't work during destroy!)
   # cluster_name computes to: org-env-sregion-deployment
-  cluster_name    = "${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}"
+  cluster_name    = dependency.cluster.outputs.cluster_name
   cluster_version = try(include.root.locals.cfg.cluster_version, "1.32")
 
   # Use dependency outputs (with mock fallbacks for first deployment)
   cluster_endpoint  = dependency.cluster.outputs.cluster_endpoint
+  cluster_certificate_authority_data = dependency.cluster.outputs.cluster_certificate_authority_data
   oidc_provider_arn = dependency.cluster.outputs.oidc_provider_arn
 
   # Don't pass these - module computes them from naming convention (eliminates chicken-and-egg)
