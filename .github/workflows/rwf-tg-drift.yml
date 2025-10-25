@@ -108,7 +108,7 @@ jobs:
           echo "TENANT_CONFIG_PATH=$TENANT_CONFIG_PATH" >> $GITHUB_ENV
           echo "TG_GRAPH_DIR=${{ github.workspace }}/_catalog/graphs/${{ inputs.graph }}" >> $GITHUB_ENV
           
-          echo "## 🔍 Drift Detection" >> $GITHUB_STEP_SUMMARY
+          echo "##  Drift Detection" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Stack:** \`${{ inputs.stack_path }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Graph:** \`${{ inputs.graph }}\`" >> $GITHUB_STEP_SUMMARY
@@ -170,17 +170,17 @@ jobs:
           if [[ "$EXIT_CODE" == "0" ]]; then
             echo "drift_detected=false" >> $GITHUB_OUTPUT
             echo "drift_status=clean" >> $GITHUB_OUTPUT
-            echo "### ✅ No Drift Detected" >> $GITHUB_STEP_SUMMARY
+            echo "###  No Drift Detected" >> $GITHUB_STEP_SUMMARY
             echo "Infrastructure matches the desired state across all layers." >> $GITHUB_STEP_SUMMARY
           elif [[ "$EXIT_CODE" == "2" ]]; then
             echo "drift_detected=true" >> $GITHUB_OUTPUT
             echo "drift_status=drift" >> $GITHUB_OUTPUT
-            echo "### ⚠️ Drift Detected!" >> $GITHUB_STEP_SUMMARY
+            echo "###  Drift Detected!" >> $GITHUB_STEP_SUMMARY
             echo "Infrastructure has drifted from the desired state in one or more layers." >> $GITHUB_STEP_SUMMARY
           else
             echo "drift_detected=error" >> $GITHUB_OUTPUT
             echo "drift_status=error" >> $GITHUB_OUTPUT
-            echo "### ❌ Error Detecting Drift" >> $GITHUB_STEP_SUMMARY
+            echo "###  Error Detecting Drift" >> $GITHUB_STEP_SUMMARY
             echo "An error occurred while checking for drift." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
@@ -193,7 +193,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const title = `[Drift Detected] Stack: ${{ inputs.stack_path }}`;
-            const body = `## 🚨 Infrastructure Drift Detected
+            const body = `##  Infrastructure Drift Detected
             
             **Stack:** \`${{ inputs.stack_path }}\`
             **Graph:** \`${{ inputs.graph }}\`
@@ -234,7 +234,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: existingIssue.number,
-                body: `## 🔄 Drift Still Present\n\n${body}`
+                body: `##  Drift Still Present\n\n${body}`
               });
               console.log(`Updated existing issue #${existingIssue.number}`);
             } else {
@@ -258,11 +258,11 @@ jobs:
           
           # Prepare payload
           if [[ "$DRIFT_STATUS" == "drift" ]]; then
-            TITLE="🚨 Drift Detected: ${{ inputs.stack_path }}"
+            TITLE=" Drift Detected: ${{ inputs.stack_path }}"
             COLOR="warning"
             TEXT="Infrastructure drift has been detected in stack ${{ inputs.stack_path }}"
           elif [[ "$DRIFT_STATUS" == "error" ]]; then
-            TITLE="❌ Drift Detection Error: ${{ inputs.stack_path }}"
+            TITLE=" Drift Detection Error: ${{ inputs.stack_path }}"
             COLOR="danger"
             TEXT="Error occurred while checking for drift in stack ${{ inputs.stack_path }}"
           fi

@@ -10,6 +10,7 @@ on:
       - ".github/workflows/**"
       - "*.yml"
       - "*.yaml"
+      - "*.hcl"
   workflow_dispatch:
     inputs:
       reason:
@@ -42,7 +43,7 @@ jobs:
 
       - name: Validate workflow YAML files
         run: |
-          echo "## 📋 Workflow YAML Validation" >> $GITHUB_STEP_SUMMARY
+          echo "##  Workflow YAML Validation" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           FAILED=0
@@ -56,11 +57,11 @@ jobs:
               
               # Check YAML syntax
               if python3 -c "import yaml; yaml.safe_load(open('$yaml_file'))" 2>/dev/null; then
-                echo "  ✅ Valid YAML syntax"
-                echo "- ✅ \`$yaml_file\`: Valid" >> $GITHUB_STEP_SUMMARY
+                echo "   Valid YAML syntax"
+                echo "-  \`$yaml_file\`: Valid" >> $GITHUB_STEP_SUMMARY
               else
-                echo "  ❌ Invalid YAML syntax"
-                echo "- ❌ \`$yaml_file\`: Invalid YAML syntax" >> $GITHUB_STEP_SUMMARY
+                echo "   Invalid YAML syntax"
+                echo "-  \`$yaml_file\`: Invalid YAML syntax" >> $GITHUB_STEP_SUMMARY
                 FAILED=$((FAILED + 1))
               fi
             fi
@@ -68,16 +69,16 @@ jobs:
           
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ $FAILED -eq 0 ]; then
-            echo "✅ **All $TOTAL workflow files valid**" >> $GITHUB_STEP_SUMMARY
+            echo " **All $TOTAL workflow files valid**" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ **Validation failed for $FAILED workflows**" >> $GITHUB_STEP_SUMMARY
+            echo " **Validation failed for $FAILED workflows**" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
       - name: Check for required workflow fields
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## 🔍 Workflow Structure Check" >> $GITHUB_STEP_SUMMARY
+          echo "##  Workflow Structure Check" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           # Check that workflow_call workflows have proper inputs/secrets
@@ -99,34 +100,34 @@ jobs:
           TITLE="${{ github.event.pull_request.title }}"
           echo "PR Title: $TITLE"
           
-          echo "## 🏷️ Version Tag Check" >> $GITHUB_STEP_SUMMARY
+          echo "##  Version Tag Check" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**PR Title:** $TITLE" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           if echo "$TITLE" | grep -Eiq '#(major|minor|patch|none)\b'; then
             TAG=$(echo "$TITLE" | grep -Eio '#(major|minor|patch|none)\b' | head -1)
-            echo "✅ **Version tag found:** $TAG" >> $GITHUB_STEP_SUMMARY
+            echo " **Version tag found:** $TAG" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             
             case "$TAG" in
               *major*)
-                echo "📦 **Semantic Version Impact:** Breaking changes to workflows" >> $GITHUB_STEP_SUMMARY
+                echo " **Semantic Version Impact:** Breaking changes to workflows" >> $GITHUB_STEP_SUMMARY
                 ;;
               *minor*)
-                echo "📦 **Semantic Version Impact:** New reusable workflows or features" >> $GITHUB_STEP_SUMMARY
+                echo " **Semantic Version Impact:** New reusable workflows or features" >> $GITHUB_STEP_SUMMARY
                 ;;
               *patch*)
-                echo "📦 **Semantic Version Impact:** Bug fixes to existing workflows" >> $GITHUB_STEP_SUMMARY
+                echo " **Semantic Version Impact:** Bug fixes to existing workflows" >> $GITHUB_STEP_SUMMARY
                 ;;
               *none*)
-                echo "📦 **Semantic Version Impact:** No version bump (docs only)" >> $GITHUB_STEP_SUMMARY
+                echo " **Semantic Version Impact:** No version bump (docs only)" >> $GITHUB_STEP_SUMMARY
                 ;;
             esac
             
             echo "OK: Version tag present in PR title"
           else
-            echo "❌ **Missing version tag**" >> $GITHUB_STEP_SUMMARY
+            echo " **Missing version tag**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Please add one of these tags to your PR title:" >> $GITHUB_STEP_SUMMARY
             echo "- \`#major\` - Breaking changes to workflows" >> $GITHUB_STEP_SUMMARY
@@ -147,18 +148,18 @@ jobs:
     steps:
       - name: Generate Summary
         run: |
-          echo "## 📊 Pull Request Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "##  Pull Request Validation Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Workflow Validation | ${{ needs.validate-workflows.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Version Tag | ${{ needs.require-version-tag.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Workflow Validation | ${{ needs.validate-workflows.result == 'success' && 'Passed' || 'Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Version Tag | ${{ needs.require-version-tag.result == 'success' && 'Passed' || 'Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           if [ "${{ needs.validate-workflows.result }}" == "success" ] && \
              [ "${{ needs.require-version-tag.result }}" == "success" ]; then
-            echo "✅ **All checks passed - Ready for review!**" >> $GITHUB_STEP_SUMMARY
+            echo " **All checks passed - Ready for review!**" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ **Some checks failed - Please review and fix**" >> $GITHUB_STEP_SUMMARY
+            echo " **Some checks failed - Please review and fix**" >> $GITHUB_STEP_SUMMARY
           fi
 

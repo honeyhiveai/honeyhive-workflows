@@ -95,7 +95,7 @@ jobs:
     steps:
       - name: Generate summary
         run: |
-          echo "## 📊 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "**Actor:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
@@ -103,11 +103,11 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           
           if [[ "${{ needs.plan_and_apply.result }}" == "success" ]]; then
-            echo "### ✅ All deployments successful" >> $GITHUB_STEP_SUMMARY
+            echo "### All deployments successful" >> $GITHUB_STEP_SUMMARY
           elif [[ "${{ needs.plan_and_apply.result }}" == "failure" ]]; then
-            echo "### ❌ Some deployments failed" >> $GITHUB_STEP_SUMMARY
+            echo "###  Some deployments failed" >> $GITHUB_STEP_SUMMARY
           else
-            echo "### ⚠️ Deployments were skipped or cancelled" >> $GITHUB_STEP_SUMMARY
+            echo "###  Deployments were skipped or cancelled" >> $GITHUB_STEP_SUMMARY
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY

@@ -100,7 +100,7 @@ jobs:
           echo "TENANT_CONFIG_PATH=$TENANT_CONFIG_PATH" >> $GITHUB_ENV
           echo "TG_GRAPH_DIR=${{ github.workspace }}/_catalog/graphs/${{ inputs.graph }}" >> $GITHUB_ENV
           
-          echo "## 📋 Terragrunt Plan" >> $GITHUB_STEP_SUMMARY
+          echo "##  Terragrunt Plan" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Stack:** \`${{ inputs.stack_path }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Graph:** \`${{ inputs.graph }}\`" >> $GITHUB_STEP_SUMMARY
@@ -125,11 +125,11 @@ jobs:
       - name: Format results
         if: always()
         run: |
-          echo "### 📝 Format Check" >> $GITHUB_STEP_SUMMARY
+          echo "###  Format Check" >> $GITHUB_STEP_SUMMARY
           if [[ "${{ steps.fmt.outcome }}" == "success" ]]; then
-            echo "✅ All graph files properly formatted" >> $GITHUB_STEP_SUMMARY
+            echo " All graph files properly formatted" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ Format issues found in graph files" >> $GITHUB_STEP_SUMMARY
+            echo " Format issues found in graph files" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
       
@@ -154,13 +154,13 @@ jobs:
       - name: Plan summary
         if: always()
         run: |
-          echo "### 📊 Plan Results" >> $GITHUB_STEP_SUMMARY
+          echo "###  Plan Results" >> $GITHUB_STEP_SUMMARY
           if [[ "${{ steps.plan.outcome }}" == "success" ]]; then
-            echo "✅ Plan completed successfully" >> $GITHUB_STEP_SUMMARY
+            echo " Plan completed successfully" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "The dependency graph was executed in the correct order." >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ Plan failed" >> $GITHUB_STEP_SUMMARY
+            echo " Plan failed" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "[View full plan output](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY

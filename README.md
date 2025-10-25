@@ -4,7 +4,7 @@
 
 This repository provides the public/internal catalog for Honeyhive's federated infrastructure deployment model. It contains reusable GitHub Actions workflows for Terragrunt operations and cloud-specific Terragrunt overlays that enforce consistent patterns across tenant deployments.
 
-## 🏗️ Architecture Overview
+##  Architecture Overview
 
 This catalog is part of a three-repository architecture:
 
@@ -12,7 +12,7 @@ This catalog is part of a three-repository architecture:
 2. **honeyhive-terraform** - Terraform root modules only
 3. **apiary** - Private tenant configurations and stacks
 
-## 📁 Repository Structure
+##  Repository Structure
 
 ```
 honeyhive-workflows/
@@ -41,7 +41,7 @@ honeyhive-workflows/
    └─ WORKFLOWS.md            # Detailed workflow documentation
 ```
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### For Tenant Onboarding
 
@@ -90,7 +90,7 @@ graphs/aws/full/           # Full environment dependency graph
 
 **Tenants never see or edit these files!**
 
-## 🔧 Composite Actions
+##  Composite Actions
 
 ### setup-terragrunt
 
@@ -114,7 +114,7 @@ Configures git to use GitHub App token for HTTPS authentication using git creden
     token: ${{ steps.app_token.outputs.token }}
 ```
 
-## 🔄 Reusable Workflows
+##  Reusable Workflows
 
 All workflows follow a consistent contract:
 
@@ -142,7 +142,7 @@ All workflows use [gruntwork-io/terragrunt-action](https://github.com/gruntwork-
 | `rwf-tg-destroy.yml` | Destroy infrastructure | Confirmation required, state backup, PR comments |
 | `rwf-tg-drift.yml` | Detect configuration drift | Issue creation, webhook notifications |
 
-## 📦 Overlays
+##  Overlays
 
 ### AWS Overlay (`overlays/aws/root.hcl`)
 
@@ -159,7 +159,7 @@ Each graph node includes this overlay to get consistent provider and state confi
 
 Stub implementation for future Azure support.
 
-## 🔗 Dependency Graphs
+##  Dependency Graphs
 
 ### What are Graphs?
 
@@ -189,13 +189,13 @@ Complete AWS environment with all three layers:
 
 **Benefits:**
 
-- ✅ Tenants never manage dependencies
-- ✅ Consistent ordering across all deployments
-- ✅ Cross-layer data passing handled automatically
-- ✅ Optional services skip cleanly when disabled
-- ✅ Centralized graph = easy to update for all tenants
+-  Tenants never manage dependencies
+-  Consistent ordering across all deployments
+-  Cross-layer data passing handled automatically
+-  Optional services skip cleanly when disabled
+-  Centralized graph = easy to update for all tenants
 
-## 🏷️ Tagging Strategy
+##  Tagging Strategy
 
 All resources are tagged with:
 
@@ -209,7 +209,7 @@ All resources are tagged with:
 - `ManagedBy`: Terraform
 - `Repository`: Source repository URL
 
-## 🔐 Security
+##  Security
 
 ### GitHub App Authentication
 
@@ -228,7 +228,7 @@ Federated authentication without long-lived credentials:
 - Trust central `HoneyhiveFederatedProvisioner` role
 - Pass role ARN as `AWS_OIDC_ROLE` secret
 
-## 📊 State Management
+##  State Management
 
 ### Default State Configuration
 
@@ -246,7 +246,7 @@ Tenants can override the state bucket in their `tenant.yaml`:
 state_bucket: my-custom-terraform-state-bucket
 ```
 
-## 🔄 Versioning
+## Versioning
 
 This catalog follows semantic versioning:
 
@@ -260,7 +260,7 @@ Pin to specific versions in your caller workflows:
 uses: honeyhiveai/honeyhive-workflows/.github/workflows/rwf-tg-plan.yml@v1.2.3
 ```
 
-## 📈 Workflow Pipeline Order
+##  Workflow Pipeline Order
 
 Plan workflow execution order:
 
@@ -269,7 +269,7 @@ Plan workflow execution order:
 3. **Sequential**: Terragrunt init → Terragrunt plan
 4. **Output**: Job summary with status indicators and PR comments
 
-## 🚦 Concurrency Control
+##  Concurrency Control
 
 Workflows use concurrency groups to prevent overlapping operations:
 
@@ -279,7 +279,7 @@ concurrency:
   cancel-in-progress: false  # Don't cancel running applies
 ```
 
-## 📝 Examples
+##  Examples
 
 See the `examples/` directory for:
 
@@ -287,7 +287,7 @@ See the `examples/` directory for:
 - Terragrunt.hcl with overlay inclusion
 - Caller workflows for plan/apply/destroy/drift
 
-## 🤝 Contributing
+##  Contributing
 
 1. Create feature branch from `main`
 2. Make changes and test thoroughly
@@ -295,13 +295,13 @@ See the `examples/` directory for:
 4. Submit PR with clear description
 5. Tag new version after merge
 
-## 📚 Additional Resources
+##  Additional Resources
 
 - [Detailed Workflow Documentation](docs/WORKFLOWS.md)
 - [Honeyhive Terraform Modules](https://github.com/honeyhiveai/honeyhive-terraform)
 - [Terragrunt Documentation](https://terragrunt.gruntwork.io/)
 
-## 🐛 Troubleshooting
+##  Troubleshooting
 
 ### Common Issues
 
@@ -317,6 +317,6 @@ See the `examples/` directory for:
    - Ensure `overlay_ref` is specified
    - Check catalog checkout step
 
-## 📄 License
+##  License
 
 [Internal Use Only - Honeyhive Proprietary]

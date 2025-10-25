@@ -85,20 +85,20 @@ class StackSelector:
                                 status.update(f"[green]Loaded {config['name']}[/green]")
                             else:
                                 console.print(
-                                    f"[yellow]⚠️  Skipping disabled config: {config['name']}[/yellow]"
+                                    f"[yellow]  Skipping disabled config: {config['name']}[/yellow]"
                                 )
                 except yaml.YAMLError as e:
                     console.print(
-                        f"[yellow]⚠️  Warning: Failed to load {config_file}: {e}[/yellow]"
+                        f"[yellow]  Warning: Failed to load {config_file}: {e}[/yellow]"
                     )
                 except Exception as e:
                     console.print(
-                        f"[yellow]⚠️  Warning: Error loading {config_file}: {e}[/yellow]"
+                        f"[yellow]  Warning: Error loading {config_file}: {e}[/yellow]"
                     )
 
         if not self.deployment_stacks:
             console.print(
-                "[red]❌ Error: No valid deployment configurations loaded[/red]"
+                "[red] Error: No valid deployment configurations loaded[/red]"
             )
             raise click.ClickException("No valid deployment configurations loaded")
 
@@ -112,14 +112,14 @@ class StackSelector:
 
         if not deployment_type:
             console.print(
-                "[yellow]⚠️  Warning: deployment_type not specified in configuration[/yellow]"
+                "[yellow]  Warning: deployment_type not specified in configuration[/yellow]"
             )
             console.print("   Defaulting to 'full_stack'")
             return "full_stack"
 
         if deployment_type not in self.deployment_stacks:
             console.print(
-                f"[red]❌ Error: Unknown deployment type: {deployment_type}[/red]"
+                f"[red] Error: Unknown deployment type: {deployment_type}[/red]"
             )
             console.print(
                 f"   Valid types: {', '.join(sorted(self.deployment_stacks.keys()))}"
@@ -135,31 +135,31 @@ class StackSelector:
         # Create main panel
         panel = Panel.fit(
             f"[bold cyan]{info.get('description', 'N/A')}[/bold cyan]",
-            title=f"🚀 Deployment Type: [bold green]{deployment_type}[/bold green]",
+            title=f"Deployment Type: [bold green]{deployment_type}[/bold green]",
             border_style="cyan",
         )
         console.print(panel)
 
         # Create a tree for components and features
-        tree = Tree("📦 [bold]Configuration[/bold]")
+        tree = Tree("Configuration")
 
         # Add components
         if "components" in info:
-            comp_branch = tree.add("🔧 Components")
+            comp_branch = tree.add("Components")
             for component in info["components"]:
                 comp_branch.add(f"[green]✓[/green] {component}")
 
         # Add enabled features
         if "features" in info:
-            feat_branch = tree.add("✨ Enabled Features")
+            feat_branch = tree.add("Enabled Features")
             for feature in info["features"]:
                 feat_branch.add(f"[green]•[/green] {feature}")
 
         # Add disabled features
         if "disabled_features" in info:
-            disabled_branch = tree.add("🚫 Disabled Features")
+            disabled_branch = tree.add("Disabled Features")
             for feature in info["disabled_features"]:
-                disabled_branch.add(f"[dim]✗ {feature}[/dim]")
+                disabled_branch.add(f"[dim]x {feature}[/dim]")
 
         console.print(tree)
 
@@ -167,7 +167,7 @@ class StackSelector:
         if "cluster_config" in info:
             cluster = info["cluster_config"]
             table = Table(
-                title="☁️ Cluster Configuration",
+                title="Cluster Configuration",
                 show_header=True,
                 header_style="bold magenta",
             )
@@ -188,7 +188,7 @@ class StackSelector:
         if "subnet_config" in info:
             subnet = info["subnet_config"]
             net_table = Table(
-                title="🌐 Network Configuration",
+                title="Network Configuration",
                 show_header=True,
                 header_style="bold blue",
             )
@@ -212,7 +212,7 @@ class StackSelector:
             sec_panel = Panel(
                 f"Encryption: [yellow]{security.get('encryption', 'N/A')}[/yellow]\n"
                 f"Compliance: [green]{', '.join(security.get('compliance', []))}[/green]",
-                title="🔒 Security Configuration",
+                title="Security Configuration",
                 border_style="red",
             )
             console.print(sec_panel)
@@ -222,7 +222,7 @@ class StackSelector:
             hybrid_panel = Panel(
                 f"Control Plane: [blue]{hybrid.get('control_plane_endpoint', 'N/A')}[/blue]\n"
                 f"Telemetry Forward: [yellow]{hybrid.get('telemetry_forward', False)}[/yellow]",
-                title="🔄 Hybrid Configuration",
+                title="Hybrid Configuration",
                 border_style="magenta",
             )
             console.print(hybrid_panel)
@@ -234,7 +234,7 @@ class StackSelector:
 
         if not stack_file:
             console.print(
-                f"[red]❌ Error: Stack file not configured for {deployment_type}[/red]"
+                f"[red] Error: Stack file not configured for {deployment_type}[/red]"
             )
             if not stack_info.get("enabled", True):
                 console.print(
@@ -247,7 +247,7 @@ class StackSelector:
 
         if not stack_path.exists():
             console.print(
-                f"[yellow]⚠️  Warning: Stack file not found: {stack_file}[/yellow]"
+                f"[yellow]  Warning: Stack file not found: {stack_file}[/yellow]"
             )
             console.print(f"   Expected at: {stack_path}")
             return stack_file  # Return anyway for use in commands
@@ -258,7 +258,7 @@ class StackSelector:
         """List all available deployment types using rich table."""
         # Create a table
         table = Table(
-            title="🚀 Available Deployment Types",
+            title="Available Deployment Types",
             show_header=True,
             header_style="bold magenta",
         )
@@ -271,7 +271,7 @@ class StackSelector:
         for dtype in sorted(self.deployment_stacks.keys()):
             info = self.deployment_stacks[dtype]
             stack_file = info.get("stack_file")
-            status = "✅" if stack_file else "⏳"
+            status = "[green]OK[/green]" if stack_file else "[yellow]Pending[/yellow]"
             desc = info.get("description", "No description")
 
             # Show key features
@@ -321,7 +321,7 @@ class StackSelector:
         commands_text = "\n".join(commands)
         commands_panel = Panel(
             commands_text,
-            title="📦 Deployment Commands",
+            title="Deployment Commands",
             border_style="green",
             expand=False,
         )
@@ -355,7 +355,7 @@ class StackSelector:
 def display_config_summary(config: Dict):
     """Display summary of the configuration using rich table."""
     # Create configuration table
-    table = Table(title="📋 Configuration Summary", show_header=False, show_edge=True)
+    table = Table(title=" Configuration Summary", show_header=False, show_edge=True)
     table.add_column("Property", style="cyan", no_wrap=True)
     table.add_column("Value", style="white")
 
@@ -390,15 +390,15 @@ def load_config(config_file: str) -> Dict:
             return config
     except FileNotFoundError:
         console.print(
-            f"[red]❌ Error: Configuration file not found: {config_file}[/red]"
+            f"[red] Error: Configuration file not found: {config_file}[/red]"
         )
         raise click.ClickException(f"Configuration file not found: {config_file}")
     except yaml.YAMLError as e:
-        console.print(f"[red]❌ Error: Invalid YAML in configuration file:[/red]")
+        console.print(f"[red] Error: Invalid YAML in configuration file:[/red]")
         console.print(f"  {e}")
         raise click.ClickException("Invalid YAML in configuration file")
     except Exception as e:
-        console.print(f"[red]❌ Error loading configuration: {e}[/red]")
+        console.print(f"[red] Error loading configuration: {e}[/red]")
         raise click.ClickException(f"Error loading configuration: {e}")
 
 
@@ -519,7 +519,7 @@ def main(
     # Validate configuration
     valid, missing = validate_config(config)
     if not valid:
-        console.print("[red]❌ Error: Missing required fields in configuration:[/red]")
+        console.print("[red] Error: Missing required fields in configuration:[/red]")
         for field in missing:
             console.print(f"   [red]• {field}[/red]")
         ctx.exit(1)
@@ -528,7 +528,7 @@ def main(
     if deployment_type:
         config["deployment_type"] = deployment_type
         console.print(
-            f"[yellow]⚠️  Overriding deployment type to: {deployment_type}[/yellow]"
+            f"[yellow]  Overriding deployment type to: {deployment_type}[/yellow]"
         )
 
     # Get deployment type
@@ -539,7 +539,7 @@ def main(
 
     # If validate-only, exit here
     if validate_only:
-        console.print(f"[green]✅ Configuration is valid[/green]")
+        console.print(f"[green] Configuration is valid[/green]")
         console.print(f"   Deployment type: {deployment_type}")
         ctx.exit(0)
 
@@ -576,12 +576,12 @@ def main(
     if stack_file:
         success_panel = Panel.fit(
             f"[bold green]{stack_file}[/bold green]",
-            title="✅ Selected Stack",
+            title=" Selected Stack",
             border_style="green",
         )
         console.print(success_panel)
     else:
-        console.print(f"[red]❌ No stack file available for {deployment_type}[/red]")
+        console.print(f"[red] No stack file available for {deployment_type}[/red]")
         ctx.exit(1)
 
     console.print()  # Add spacing
@@ -598,8 +598,3 @@ def main(
         console.print(f'export DEPLOYMENT_TYPE="{deployment_type}"')
 
     console.print()  # Add spacing
-    console.print("[bold green]✨ Ready to deploy![/bold green]")
-
-
-if __name__ == "__main__":
-    main()

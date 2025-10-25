@@ -12,7 +12,7 @@ if [ -z "$CLUSTER_NAME" ]; then
   exit 1
 fi
 
-echo "🧹 Cleaning up Karpenter-provisioned nodes for cluster: $CLUSTER_NAME"
+echo "Cleaning up Karpenter-provisioned nodes for cluster: $CLUSTER_NAME"
 
 # Find all EC2 instances with karpenter.sh/cluster tag
 INSTANCE_IDS=$(aws ec2 describe-instances \
@@ -24,7 +24,7 @@ INSTANCE_IDS=$(aws ec2 describe-instances \
   --output text)
 
 if [ -z "$INSTANCE_IDS" ]; then
-  echo "✅ No Karpenter nodes found - already clean!"
+  echo "No Karpenter nodes found - already clean!"
   exit 0
 fi
 
@@ -40,5 +40,5 @@ aws ec2 wait instance-terminated \
   --region "$REGION" \
   --instance-ids $INSTANCE_IDS
 
-echo "✅ All Karpenter nodes terminated successfully!"
+echo "All Karpenter nodes terminated successfully!"
 

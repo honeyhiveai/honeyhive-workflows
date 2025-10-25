@@ -136,7 +136,7 @@ jobs:
           fi
           
           echo "account_id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
-          echo "✅ Extracted account_id: $ACCOUNT_ID"
+          echo "Extracted account_id: $ACCOUNT_ID"
       
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v5
@@ -160,7 +160,7 @@ jobs:
         run: |
           git config --global credential.helper store
           echo "https://x-access-token:${{ steps.app_token.outputs.token }}@github.com" > ~/.git-credentials
-          echo "✅ Git credentials configured for Terraform/Terragrunt module access"
+          echo "Git credentials configured for Terraform/Terragrunt module access"
       
       - name: Set environment variables
         run: |
@@ -183,7 +183,7 @@ jobs:
       
       - name: DEBUG - Show actual directory structure
         run: |
-          echo "## 🔍 Directory Structure Debug" >> $GITHUB_STEP_SUMMARY
+          echo "##Directory Structure Debug" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### GITHUB_WORKSPACE: ${{ github.workspace }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -220,9 +220,9 @@ jobs:
           # Export the config path for Terragrunt to use
           export TENANT_CONFIG_PATH="${{ github.workspace }}/config-repo/${{ inputs.config_path }}/${{ inputs.environment }}.yaml"
           
-          echo "📦 Initializing Terragrunt for ${LAYER} layer"
+          echo "Initializing Terragrunt for ${LAYER} layer"
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## 🚀 Terragrunt Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "##  Terragrunt Deployment" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Environment**: \`${{ inputs.environment }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **AWS Account**: \`${{ steps.extract_config.outputs.account_id }}\`" >> $GITHUB_STEP_SUMMARY
@@ -266,7 +266,7 @@ jobs:
         run: |
           cd ${{ github.workspace }}/workflow-repo/graphs/aws/full
           
-          echo "📋 Running plan in ${LAYER}..."
+          echo "Running plan in ${LAYER}..."
           
           if [ "$LAYER" == "all" ]; then
             terragrunt run-all plan --terragrunt-non-interactive
@@ -298,7 +298,7 @@ jobs:
         run: |
           cd ${{ github.workspace }}/workflow-repo/graphs/aws/full
           
-          echo "✅ Applying changes in ${LAYER}..."
+          echo "Applying changes in ${LAYER}..."
           
           if [ "$LAYER" == "all" ]; then
             terragrunt run-all apply --terragrunt-non-interactive
@@ -330,7 +330,7 @@ jobs:
         run: |
           cd ${{ github.workspace }}/workflow-repo/graphs/aws/full
           
-          echo "⚠️ WARNING: Destroying infrastructure!"
+          echo "WARNING: Destroying infrastructure!"
           echo "Environment: ${{ inputs.environment }}"
           echo "Layer: $LAYER"
           
@@ -368,4 +368,13 @@ jobs:
           echo "### Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Duration**: ${{ steps.plan.conclusion != 'skipped' && steps.plan.outputs.duration || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ needs.plan_and_apply.result }}" == "success" ]]; then
+            echo "### All deployments successful" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.plan_and_apply.result }}" == "failure" ]]; then
+            echo "### Some deployments failed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Deployments were skipped or cancelled" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "| Workflow Validation | ${{ needs.validate-workflows.result == 'success' && 'Passed' || 'Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Version Tag | ${{ needs.require-version-tag.result == 'success' && 'Passed' || 'Failed' }} |" >> $GITHUB_STEP_SUMMARY
 
