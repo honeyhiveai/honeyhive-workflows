@@ -10,6 +10,7 @@ on:
       - ".github/workflows/**"
       - "*.yml"
       - "*.yaml"
+      - "*.hcl"
   workflow_dispatch:
     inputs:
       reason:
