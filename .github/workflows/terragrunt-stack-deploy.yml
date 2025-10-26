@@ -96,6 +96,8 @@ jobs:
       TERRAGRUNT_INCLUDE_DEPENDENCY_OUTPUTS: "true"
       TERRAGRUNT_LOG_LEVEL: info
       CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_file != '' && inputs.config_file || format('{0}/{1}.yaml', inputs.config_path, inputs.environment) }}
+      TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
+      SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
 
     steps:
       - name: Generate GitHub App Token
