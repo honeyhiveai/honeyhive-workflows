@@ -169,7 +169,7 @@ jobs:
         working-directory: ${{ steps.select-dir.outputs.dir }}
         run: |
           # Terragrunt 0.91.1 requires explicit stack file reference
-          terragrunt stack dag graph --stack terragrunt.stack.hcl
+          terragrunt dag graph --stack terragrunt.stack.hcl
 
 
 
