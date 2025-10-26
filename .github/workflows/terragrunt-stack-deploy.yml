@@ -168,8 +168,8 @@ jobs:
         continue-on-error: false
         working-directory: ${{ steps.select-dir.outputs.dir }}
         run: |
-          # Terragrunt 0.91.1 requires explicit stack file reference
-          terragrunt dag graph --stack terragrunt.stack.hcl
+          # Terragrunt 0.91.1 automatically detects terragrunt.stack.hcl in the directory
+          terragrunt dag graph
 
 
 
