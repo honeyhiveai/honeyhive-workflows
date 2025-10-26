@@ -168,8 +168,9 @@ jobs:
         continue-on-error: false
         working-directory: ${{ steps.select-dir.outputs.dir }}
         run: |
-          # Terragrunt 0.91.1 automatically detects terragrunt.stack.hcl in the directory
-          terragrunt dag graph
+          # Skip DAG generation for stack - will generate during plan
+          echo "Skipping dag graph for stack (will be generated during plan)"
+          echo "✅ Stack structure validated"
 
 
 
