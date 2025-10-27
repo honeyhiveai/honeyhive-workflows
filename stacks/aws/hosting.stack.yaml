@@ -10,23 +10,23 @@ stack_configuration:
 
 # Units in this stack
 units:
-  - path: units/hosting/cluster-next
+  - path: units/hosting/cluster
     description: EKS Kubernetes cluster
-    # Note: External dependency on substrate/vpc-next handled in unit
+    # Note: External dependency on substrate/vpc handled in unit
     
-  - path: units/hosting/karpenter-next
+  - path: units/hosting/karpenter
     description: Kubernetes node autoscaling with Karpenter
     dependencies:
-      - units/hosting/cluster-next
+      - units/hosting/cluster
     skip: ${get_env("SKIP_KARPENTER", "false")}
     
-  - path: units/hosting/addons-next
+  - path: units/hosting/addons
     description: EKS managed addons and controllers
     dependencies:
-      - units/hosting/cluster-next
-      - units/hosting/karpenter-next  # Ignored if karpenter is skipped
+      - units/hosting/cluster
+      - units/hosting/karpenter  # Ignored if karpenter is skipped
     
-  - path: units/hosting/pod-identities-next
+  - path: units/hosting/pod-identities
     description: Pod identity associations for workload authentication
     dependencies:
-      - units/hosting/cluster-next
+      - units/hosting/cluster
