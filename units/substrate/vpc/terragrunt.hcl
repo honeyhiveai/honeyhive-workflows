@@ -9,6 +9,11 @@ terraform {
   source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//substrate/aws/vpc?ref=${include.root.locals.terraform_ref}"
 }
 
+# Compute cluster name for Karpenter discovery tags
+locals {
+  cluster_name = "${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}"
+}
+
 inputs = {
   # Core variables from config
   org        = include.root.locals.org
@@ -32,8 +37,46 @@ inputs = {
   enable_dhcp_options = false
   dhcp_options        = {}
 
-  # VPC Endpoints - will be populated after VPC creation
-  gateway_endpoints   = {}
-  interface_endpoints = {}
-  endpoint_tags       = {}
+  # Karpenter discovery tags for private subnets
+  private_subnet_extra_tags = {
+    "karpenter.sh/discovery" = local.cluster_name
+  }
+
+  # VPC Gateway Endpoints (no charge, route through VPC)
+  gateway_endpoints = {
+    s3 = {
+      service         = "s3"
+      route_table_ids = [] # Empty list means apply to all route tables
+    }
+  }
+
+  # VPC Interface Endpoints (private connectivity to AWS services)
+  interface_endpoints = {
+    secretsmanager = {
+      service             = "secretsmanager"
+      private_dns_enabled = true
+    }
+    sqs = {
+      service             = "sqs"
+      private_dns_enabled = true
+    }
+    ecr_dkr = {
+      service             = "ecr.dkr"
+      private_dns_enabled = true
+    }
+    sts = {
+      service             = "sts"
+      private_dns_enabled = true
+    }
+    logs = {
+      service             = "logs"
+      private_dns_enabled = true
+    }
+    ssm = {
+      service             = "ssm"
+      private_dns_enabled = true
+    }
+  }
+
+  endpoint_tags = {}
 }
