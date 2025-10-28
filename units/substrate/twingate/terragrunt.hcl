@@ -16,6 +16,15 @@ dependency "vpc" {
   }
 }
 
+dependency "dns" {
+  config_path = "../dns"
+
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs = {
+    zone_name = "mock.example.com"
+  }
+}
+
 terraform {
   source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//substrate/aws/twingate?ref=${include.root.locals.terraform_ref}"
 }
@@ -51,7 +60,7 @@ inputs = {
 
   # DNS configuration
   domain_name   = include.root.locals.cfg.domain_name
-  dns_zone_name = include.root.locals.cfg.dns_zone_name
+  dns_zone_name = dependency.dns.outputs.zone_name
 
   # Twingate configuration
   twingate_network    = include.root.locals.cfg.twingate_network
