@@ -13,6 +13,16 @@ dependencies {
   ]
 }
 
+# DNS dependency for zone name
+dependency "dns" {
+  config_path = "../../substrate/dns"
+
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs = {
+    zone_name = "mock.example.com"
+  }
+}
+
 # Mock outputs for cluster dependency (needed for first deployment)
 dependency "cluster" {
   config_path = "../cluster"
@@ -63,7 +73,7 @@ inputs = {
   # iam_role_arns - computed as: arn:aws:iam::ACCOUNT:role/${iam_prefix}${RoleName}
   # karpenter_node_instance_profile_name - computed as: ${iam_prefix}KarpenterNode
 
-  dns_zone_name = try(include.root.locals.cfg.dns_zone_name, null) # From config
+  dns_zone_name = dependency.dns.outputs.zone_name # From substrate DNS module
 
   # Feature flags
   deploy_argocd       = try(include.root.locals.cfg.deploy_argocd, true)
