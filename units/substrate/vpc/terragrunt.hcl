@@ -76,6 +76,10 @@ inputs = {
       service             = "ssm"
       private_dns_enabled = true
     }
+    eks = {
+      service             = "eks"
+      private_dns_enabled = true
+    }
   }
 
   endpoint_tags = {}
