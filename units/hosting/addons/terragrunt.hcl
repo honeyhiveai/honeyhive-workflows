@@ -68,7 +68,7 @@ inputs = {
   # iam_role_arns - computed as: arn:aws:iam::ACCOUNT:role/${iam_prefix}${RoleName}
   # karpenter_node_instance_profile_name - computed as: ${iam_prefix}KarpenterNode
 
-  dns_zone_name = dependency.dns.outputs.zone_name # From substrate DNS module
+  dns_zone_name = local.dns_zone_name # Computed locally using same formula as substrate
 
   # Feature flags
   deploy_argocd       = try(include.root.locals.cfg.deploy_argocd, true)
