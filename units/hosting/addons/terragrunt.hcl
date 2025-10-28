@@ -15,7 +15,7 @@ dependencies {
 
 # DNS dependency for zone name
 dependency "dns" {
-  config_path = "../../../substrate/dns"
+  config_path = "../../substrate/dns"
 
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
   mock_outputs = {
