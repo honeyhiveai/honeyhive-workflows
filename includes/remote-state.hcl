@@ -20,7 +20,7 @@ remote_state {
 
     # Hierarchical state key structure
     # Pattern: {org}/{env}/{sregion}/{deployment}/{stack}/{unit}/terraform.tfstate
-    key = "${include.tenant_config.locals.org}/${include.tenant_config.locals.env}/${include.tenant_config.locals.sregion}/${include.tenant_config.locals.deployment}/${path_relative_to_include()}/terraform.tfstate"
+    key = "${include.tenant_config.locals.org}/${include.tenant_config.locals.env}/${include.tenant_config.locals.sregion}/${include.tenant_config.locals.deployment}/${basename(get_terragrunt_dir())}/terraform.tfstate"
 
     # Regional configuration
     region  = include.tenant_config.locals.region

@@ -19,7 +19,7 @@ provider "aws" {
   # Assume provisioner role in target account
   assume_role {
     role_arn     = "arn:aws:iam::${include.tenant_config.locals.account_id}:role/HoneyhiveProvisioner"
-    session_name = "terragrunt-${include.tenant_config.locals.env}-${include.tenant_config.locals.deployment}-${path_relative_to_include()}"
+    session_name = "terragrunt-${include.tenant_config.locals.env}-${include.tenant_config.locals.deployment}-${basename(get_terragrunt_dir())}"
     external_id  = "honeyhive-deployments-${include.tenant_config.locals.env}"
   }
   
