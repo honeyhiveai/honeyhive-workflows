@@ -19,3 +19,8 @@ unit "pod_identities" {
   source = "../../../units/hosting/pod-identities"
   path   = "pod-identities"
 }
+
+unit "argocd_apps" {
+  source = "../../../units/hosting/argocd_apps"
+  path   = "argocd_apps"
+}
