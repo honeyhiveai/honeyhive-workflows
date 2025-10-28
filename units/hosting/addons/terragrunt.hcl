@@ -13,14 +13,9 @@ dependencies {
   ]
 }
 
-# DNS dependency for zone name
-dependency "dns" {
-  config_path = "../../substrate/dns"
-
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
-  mock_outputs = {
-    zone_name = "mock.example.com"
-  }
+# DNS zone name computed locally (same formula as substrate stack)
+locals {
+  dns_zone_name = "${include.root.locals.deployment}.${include.root.locals.sregion}.${include.root.locals.env}.${include.root.locals.cfg.shortname}.${include.root.locals.cfg.domain_name}"
 }
 
 # Mock outputs for cluster dependency (needed for first deployment)
