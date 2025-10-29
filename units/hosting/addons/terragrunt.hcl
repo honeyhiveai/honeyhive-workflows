@@ -9,6 +9,7 @@ include "root" {
 dependencies {
   paths = [
     "../cluster"
+    "../karpenter"
   ]
 }
 
