@@ -24,6 +24,18 @@ dependency "cluster" {
   skip_outputs = false
 }
 
+# Addons dependency to ensure cluster is fully ready with all addons deployed
+dependency "addons" {
+  config_path = "../addons"
+
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs = {
+    # No specific outputs needed, just ensures addons are deployed first
+  }
+
+  skip_outputs = false
+}
+
 inputs = {
   # Core deployment parameters
   org         = include.root.locals.org
