@@ -7,7 +7,8 @@ include "root" {
 
 dependencies {
   paths = [
-    "../cluster"
+    "../cluster",
+    "../addons"
   ]
 }
 
@@ -26,6 +27,18 @@ dependency "cluster" {
     ebs_csi_driver_role_arn            = "arn:aws:iam::${include.root.locals.account_id}:role/${include.root.locals.org}${title(include.root.locals.env)}${upper(include.root.locals.sregion)}${title(include.root.locals.deployment)}EbsCsiDriver"
   }
  # Skip outputs during destroy to avoid dependency issues
+  skip_outputs = false
+}
+
+# Dependencies for execution order - karpenter needs addons (ALB controller) to be ready
+dependency "addons" {
+  config_path = "../addons"
+
+  mock_outputs_allowed_terraform_commands = ["validate", "plan", "graph", "state"]
+  mock_outputs = {
+    # No specific outputs needed, just ensures addons are deployed first
+  }
+
   skip_outputs = false
 }
 
