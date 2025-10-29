@@ -7,8 +7,7 @@ include "root" {
 
 dependencies {
   paths = [
-    "../cluster",
-    "../addons"
+    "../cluster"
   ]
 }
 
