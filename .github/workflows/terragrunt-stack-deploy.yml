@@ -192,7 +192,7 @@ jobs:
         run: |
           if [ -n "${{ inputs.target_unit }}" ]; then
             echo "🎯 Targeting specific unit: ${{ inputs.target_unit }}"
-            cd "../units/${{ inputs.stack }}/${{ inputs.target_unit }}"
+            cd "../../units/${{ inputs.stack }}/${{ inputs.target_unit }}"
             case "${{ inputs.action }}" in
               validate)
                 terragrunt validate
