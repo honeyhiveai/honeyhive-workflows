@@ -29,18 +29,6 @@ dependency "cluster" {
   skip_outputs = false
 }
 
-# Dependencies for execution order - karpenter needs addons (ALB controller) to be ready
-dependency "addons" {
-  config_path = "../addons"
-
-  mock_outputs_allowed_terraform_commands = ["validate", "plan", "graph", "state"]
-  mock_outputs = {
-    # No specific outputs needed, just ensures addons are deployed first
-  }
-
-  skip_outputs = false
-}
-
 terraform {
   source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/kubernetes/karpenter?ref=${include.root.locals.terraform_ref}"
 }
