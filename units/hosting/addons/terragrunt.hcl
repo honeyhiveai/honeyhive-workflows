@@ -5,11 +5,10 @@ include "root" {
   expose = true
 }
 
-# Dependencies for execution order - addons need cluster and karpenter to be ready
+# Dependencies for execution order - addons only need cluster to be ready
 dependencies {
   paths = [
-    "../cluster",
-    "../karpenter"
+    "../cluster"
   ]
 }
 
