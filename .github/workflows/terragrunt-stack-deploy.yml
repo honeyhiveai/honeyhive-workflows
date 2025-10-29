@@ -70,6 +70,11 @@ on:
         required: false
         default: 4
         type: number
+      target_unit:
+        description: 'Target specific unit (e.g., karpenter, addons, cluster) - leave empty for all units'
+        required: false
+        type: string
+        default: ''
     
     secrets:
       GITHUB_APP_ID:
@@ -185,18 +190,43 @@ jobs:
           # Terragrunt will render units into .terragrunt-stack/; abspath in your include guards handle that.
           TG_PARALLELISM: ${{ inputs.queue_max_parallelism }}
         run: |
+          # Build terragrunt command with optional target unit
+          TARGET_FLAG=""
+          if [ -n "${{ inputs.target_unit }}" ]; then
+            TARGET_FLAG="--terragrunt-working-dir units/${{ inputs.stack }}/${{ inputs.target_unit }}"
+            echo "🎯 Targeting specific unit: ${{ inputs.target_unit }}"
+          else
+            echo "🌐 Running on entire ${{ inputs.stack }} stack"
+          fi
+          
           case "${{ inputs.action }}" in
             validate)
-              terragrunt stack run validate
+              if [ -n "${{ inputs.target_unit }}" ]; then
+                terragrunt run validate $TARGET_FLAG
+              else
+                terragrunt stack run validate
+              fi
               ;;
             plan)
-              terragrunt stack run plan -- -lock-timeout=10m -input=false
+              if [ -n "${{ inputs.target_unit }}" ]; then
+                terragrunt run plan $TARGET_FLAG -- -lock-timeout=10m -input=false
+              else
+                terragrunt stack run plan -- -lock-timeout=10m -input=false
+              fi
               ;;
             apply)
-              terragrunt stack run apply -- -auto-approve -lock-timeout=10m -input=false
+              if [ -n "${{ inputs.target_unit }}" ]; then
+                terragrunt run apply $TARGET_FLAG -- -auto-approve -lock-timeout=10m -input=false
+              else
+                terragrunt stack run apply -- -auto-approve -lock-timeout=10m -input=false
+              fi
               ;;
             destroy)
-              terragrunt stack run destroy -- -auto-approve -lock-timeout=10m -input=false
+              if [ -n "${{ inputs.target_unit }}" ]; then
+                terragrunt run destroy $TARGET_FLAG -- -auto-approve -lock-timeout=10m -input=false
+              else
+                terragrunt stack run destroy -- -auto-approve -lock-timeout=10m -input=false
+              fi
               ;;
             *) echo "Unsupported action: ${{ inputs.action }}" >&2; exit 64 ;;
           esac
