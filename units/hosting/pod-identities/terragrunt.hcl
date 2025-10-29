@@ -5,10 +5,11 @@ include "root" {
   expose = true
 }
 
-# Dependencies for execution order - pod identities need cluster to be ready
+# Dependencies for execution order - pod identities need cluster and karpenter to be ready
 dependencies {
   paths = [
-    "../cluster"
+    "../cluster",
+    "../karpenter"
   ]
 }
 
