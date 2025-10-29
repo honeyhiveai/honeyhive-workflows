@@ -190,46 +190,42 @@ jobs:
           # Terragrunt will render units into .terragrunt-stack/; abspath in your include guards handle that.
           TG_PARALLELISM: ${{ inputs.queue_max_parallelism }}
         run: |
-          # Build terragrunt command with optional target unit
-          TARGET_FLAG=""
           if [ -n "${{ inputs.target_unit }}" ]; then
-            TARGET_FLAG="--terragrunt-working-dir units/${{ inputs.stack }}/${{ inputs.target_unit }}"
             echo "🎯 Targeting specific unit: ${{ inputs.target_unit }}"
+            cd "units/${{ inputs.stack }}/${{ inputs.target_unit }}"
+            case "${{ inputs.action }}" in
+              validate)
+                terragrunt validate
+                ;;
+              plan)
+                terragrunt plan -lock-timeout=10m -input=false
+                ;;
+              apply)
+                terragrunt apply -auto-approve -lock-timeout=10m -input=false
+                ;;
+              destroy)
+                terragrunt destroy -auto-approve -lock-timeout=10m -input=false
+                ;;
+              *) echo "Unsupported action: ${{ inputs.action }}" >&2; exit 64 ;;
+            esac
           else
             echo "🌐 Running on entire ${{ inputs.stack }} stack"
-          fi
-          
-          case "${{ inputs.action }}" in
-            validate)
-              if [ -n "${{ inputs.target_unit }}" ]; then
-                terragrunt run validate $TARGET_FLAG
-              else
+            case "${{ inputs.action }}" in
+              validate)
                 terragrunt stack run validate
-              fi
-              ;;
-            plan)
-              if [ -n "${{ inputs.target_unit }}" ]; then
-                terragrunt run plan $TARGET_FLAG -- -lock-timeout=10m -input=false
-              else
+                ;;
+              plan)
                 terragrunt stack run plan -- -lock-timeout=10m -input=false
-              fi
-              ;;
-            apply)
-              if [ -n "${{ inputs.target_unit }}" ]; then
-                terragrunt run apply $TARGET_FLAG -- -auto-approve -lock-timeout=10m -input=false
-              else
+                ;;
+              apply)
                 terragrunt stack run apply -- -auto-approve -lock-timeout=10m -input=false
-              fi
-              ;;
-            destroy)
-              if [ -n "${{ inputs.target_unit }}" ]; then
-                terragrunt run destroy $TARGET_FLAG -- -auto-approve -lock-timeout=10m -input=false
-              else
+                ;;
+              destroy)
                 terragrunt stack run destroy -- -auto-approve -lock-timeout=10m -input=false
-              fi
-              ;;
-            *) echo "Unsupported action: ${{ inputs.action }}" >&2; exit 64 ;;
-          esac
+                ;;
+              *) echo "Unsupported action: ${{ inputs.action }}" >&2; exit 64 ;;
+            esac
+          fi
           
           
       - name: Upload DAG (artifact)
