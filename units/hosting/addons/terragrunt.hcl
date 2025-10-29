@@ -8,7 +8,7 @@ include "root" {
 # Dependencies for execution order - addons only need cluster to be ready
 dependencies {
   paths = [
-    "../cluster"
+    "../cluster",
     "../karpenter"
   ]
 }
