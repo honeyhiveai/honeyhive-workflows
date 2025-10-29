@@ -23,7 +23,7 @@ dependency "cluster" {
     karpenter_node_role_arn            = "arn:aws:iam::${include.root.locals.account_id}:role/${include.root.locals.org}${title(include.root.locals.env)}${upper(include.root.locals.sregion)}${title(include.root.locals.deployment)}KarpenterNode"
     karpenter_node_role_name           = "${include.root.locals.org}${title(include.root.locals.env)}${upper(include.root.locals.sregion)}${title(include.root.locals.deployment)}KarpenterNode"
     oidc_provider_arn                  = "arn:aws:iam::${include.root.locals.account_id}:oidc-provider/oidc.eks.${include.root.locals.region}.amazonaws.com/id/00000000000000000000000000000000"
-    ebs_csi_driver_role_arn            = "arn:aws:iam::${include.root.locals.account_id}:role/${include.root.locals.org}${title(include.root.locals.env)}${upper(include.root.locals.sregion)}${title(include.root.locals.deployment)}EbsCsiDriver"
+    # ebs_csi_driver_role_arn moved to pod_identities module
   }
  # Skip outputs during destroy to avoid dependency issues
   skip_outputs = false
@@ -58,7 +58,7 @@ inputs = {
   karpenter_node_role_arn            = dependency.cluster.outputs.karpenter_node_role_arn
   karpenter_node_role_name           = dependency.cluster.outputs.karpenter_node_role_name
   oidc_provider_arn                  = dependency.cluster.outputs.oidc_provider_arn
-  ebs_csi_driver_role_arn            = dependency.cluster.outputs.ebs_csi_driver_role_arn
+  # ebs_csi_driver_role_arn moved to pod_identities module - not needed by Karpenter
 
   # Karpenter configuration
   deploy_karpenter_controller = try(include.root.locals.cfg.deploy_karpenter, true)
