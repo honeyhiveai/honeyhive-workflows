@@ -162,17 +162,8 @@ jobs:
           test -f "$CONFIG_PATH" || (echo "Tenant config not found" && exit 1)
           echo '---'; sed -n '1,120p' "$CONFIG_PATH" || true
           echo "---"
-          echo "Extracting external_id from config:"
-          python3 <<EOF
-import yaml
-with open("$CONFIG_PATH") as f:
-    cfg = yaml.safe_load(f)
-    external_id = cfg.get('external_id', 'NOT_FOUND')
-    env = cfg.get('env', 'NOT_FOUND')
-    print(f"external_id from config: {external_id}")
-    print(f"env from config: {env}")
-    print(f"Generated fallback would be: honeyhive-deployments-{env}")
-EOF
+          echo "Checking external_id in config:"
+          grep -E "^external_id:" "$CONFIG_PATH" || echo "external_id not found in config"
           
           
       - name: Select working directory
