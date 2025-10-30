@@ -17,7 +17,8 @@
 
 locals {
   # Extract configuration from tenant.yaml (via env var or local file)
-  cfg = yamldecode(file(try(get_env("TENANT_CONFIG_PATH"), "${get_terragrunt_dir()}/tenant.yaml")))
+  # Prefer CONFIG_PATH (set by workflow) over TENANT_CONFIG_PATH (legacy)
+  cfg = yamldecode(file(try(get_env("CONFIG_PATH"), try(get_env("TENANT_CONFIG_PATH"), "${get_terragrunt_dir()}/tenant.yaml"))))
 
   # Core variables from tenant configuration
   org             = local.cfg.org
