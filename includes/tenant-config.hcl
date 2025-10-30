@@ -26,6 +26,9 @@ locals {
   # Terraform module version to use
   terraform_ref = try(local.cfg.terraform_ref, "v0.2.7")
 
+  # External ID for role assumption (use config value or generate from env)
+  external_id = try(local.cfg.external_id, "honeyhive-deployments-${local.env}")
+
   # Common tags applied to all resources
   common_tags = {
     Organization = local.org

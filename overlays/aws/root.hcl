@@ -120,6 +120,9 @@ locals {
 
   # AWS account ID (optional, for validation)
   account_id = try(local.cfg.account_id, "")
+
+  # External ID for role assumption (use config value or generate from env)
+  external_id = try(local.cfg.external_id, "honeyhive-deployments-${local.env}")
 }
 
 # Generate AWS provider configuration
@@ -133,7 +136,7 @@ generate "provider" {
       assume_role {
         role_arn     = "arn:aws:iam::${local.account_id}:role/HoneyhiveProvisioner"
         session_name = "terragrunt-${local.env}-${local.deployment}"
-        external_id  = "honeyhive-deployments-${local.env}"
+        external_id  = "${local.external_id}"
       }
       
       default_tags {

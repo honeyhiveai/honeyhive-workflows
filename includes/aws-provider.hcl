@@ -20,7 +20,7 @@ provider "aws" {
   assume_role {
     role_arn     = "arn:aws:iam::${include.tenant_config.locals.account_id}:role/HoneyhiveProvisioner"
     session_name = "terragrunt-${include.tenant_config.locals.env}-${include.tenant_config.locals.deployment}-${basename(get_terragrunt_dir())}"
-    external_id  = "honeyhive-deployments-${include.tenant_config.locals.env}"
+    external_id  = "${include.tenant_config.locals.external_id}"
   }
   
   # Prevent accidental cross-environment deployment

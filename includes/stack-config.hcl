@@ -21,6 +21,9 @@ locals {
   features      = try(local.cfg.features, {})
   terraform_ref = try(local.cfg.terraform_ref, get_env("TERRAFORM_REF", "v0.9.31"))
 
+  # External ID for role assumption (use config value or generate from env)
+  external_id = try(local.cfg.external_id, "honeyhive-deployments-${local.env}")
+
   # Common tags
   common_tags = {
     Organization = local.org
@@ -64,7 +67,7 @@ provider "aws" {
   assume_role {
     role_arn     = "arn:aws:iam::${local.account_id}:role/HoneyhiveProvisioner"
     session_name = "terragrunt-${local.env}-${local.deployment}"
-    external_id  = "honeyhive-deployments-${local.env}"
+    external_id  = "${local.external_id}"
   }
   
   allowed_account_ids = ["${local.account_id}"]
