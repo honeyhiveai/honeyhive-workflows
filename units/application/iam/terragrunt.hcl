@@ -23,20 +23,10 @@ dependency "s3" {
   skip_outputs = false
 }
 
-dependency "cluster" {
-  config_path = "../../hosting/cluster"
-
-  mock_outputs = {
-    cluster_name = "${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}"
-    cluster_endpoint = "https://${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}.gr7.${include.root.locals.region}.eks.amazonaws.com"
-    cluster_certificate_authority_data = "LS0tLS1CRUdJTi..."
-  }
-
-  # Skip outputs when running application stack standalone
-  # Terraform module should read from remote state instead
-  skip_outputs = true
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
-}
+# Cross-stack dependency on hosting/cluster
+# NOTE: Dependency block removed - Terragrunt Stacks cannot process cross-stack
+# dependencies when paths don't exist locally. Module should read from remote state.
+# TODO: Update application/aws/iam module to read cluster outputs from remote state
 
 terraform {
   source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//application/aws/iam?ref=${include.root.locals.terraform_ref}"
@@ -52,7 +42,7 @@ inputs = {
   account_id = include.root.locals.account_id
 
   # Dependencies
-  cluster_name       = dependency.cluster.outputs.cluster_name
+  cluster_name       = null  # TODO: Module should read from remote state (hosting/cluster)
   store_bucket_name  = dependency.s3.outputs.bucket_name
   cp_namespace       = "control-plane"
 

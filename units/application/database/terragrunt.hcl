@@ -6,23 +6,9 @@ include "root" {
 }
 
 # Cross-stack dependency on substrate/vpc
-# Note: No dependencies{} block - Terragrunt will read from remote state
-# when config_path doesn't exist locally
-
-dependency "vpc" {
-  config_path = "../../substrate/vpc"
-
-  mock_outputs = {
-    vpc_id             = "vpc-00000000000000000"
-    private_subnet_ids = ["subnet-00000000000000001", "subnet-00000000000000002", "subnet-00000000000000003"]
-    vpc_cidr_block     = "10.0.0.0/16"
-  }
-
-  # Skip outputs when running application stack standalone
-  # Terraform module should read from remote state instead
-  skip_outputs = true
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
-}
+# NOTE: Dependency block removed - Terragrunt Stacks cannot process cross-stack
+# dependencies when paths don't exist locally. Module should read from remote state.
+# TODO: Update application/aws/database module to read VPC outputs from remote state
 
 terraform {
   source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//application/aws/database?ref=${include.root.locals.terraform_ref}"
@@ -37,9 +23,10 @@ inputs = {
   deployment = include.root.locals.deployment
   account_id = include.root.locals.account_id
 
-  # Network dependencies
-  vpc_id             = dependency.vpc.outputs.vpc_id
-  private_subnet_ids = dependency.vpc.outputs.private_subnet_ids
+  # Network dependencies - TODO: Module should read from remote state
+  # For now, using mock values - will fail during apply until module is updated
+  vpc_id             = "vpc-00000000000000000"  # TODO: Read from remote state
+  private_subnet_ids = ["subnet-00000000000000001", "subnet-00000000000000002", "subnet-00000000000000003"]  # TODO: Read from remote state
 
   # Database configuration
   database_name      = "hh-${include.root.locals.deployment}"
