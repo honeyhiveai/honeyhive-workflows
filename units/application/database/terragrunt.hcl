@@ -5,9 +5,9 @@ include "root" {
   expose = true
 }
 
-# Dependencies for execution order
-# Note: Cross-stack dependencies (substrate/vpc) are handled via remote state
-# No local path dependency needed - Terragrunt will read from remote state
+# Cross-stack dependency on substrate/vpc
+# Note: No dependencies{} block - Terragrunt will read from remote state
+# when config_path doesn't exist locally
 
 dependency "vpc" {
   config_path = "../../substrate/vpc"
