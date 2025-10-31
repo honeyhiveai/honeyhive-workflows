@@ -21,7 +21,6 @@ dependency "vpc" {
   # Skip outputs if running application stack standalone (substrate may not exist locally)
   # Terragrunt will fall back to remote state if config_path doesn't exist
   skip_outputs = false
-  skip = false
 }
 
 terraform {
