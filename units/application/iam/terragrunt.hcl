@@ -32,9 +32,10 @@ dependency "cluster" {
     cluster_certificate_authority_data = "LS0tLS1CRUdJTi..."
   }
 
-  # Skip outputs if running application stack standalone (hosting may not exist locally)
-  # Terragrunt will fall back to remote state if config_path doesn't exist
-  skip_outputs = false
+  # Skip outputs when running application stack standalone
+  # Terraform module should read from remote state instead
+  skip_outputs = true
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
 }
 
 terraform {
