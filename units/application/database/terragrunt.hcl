@@ -23,10 +23,11 @@ inputs = {
   deployment = include.root.locals.deployment
   account_id = include.root.locals.account_id
 
-  # Network dependencies - TODO: Module should read from remote state
-  # For now, using mock values - will fail during apply until module is updated
-  vpc_id             = "vpc-00000000000000000"  # TODO: Read from remote state
-  private_subnet_ids = ["subnet-00000000000000001", "subnet-00000000000000002", "subnet-00000000000000003"]  # TODO: Read from remote state
+  # Network dependencies - Module reads from remote state (substrate/vpc)
+  # Fallback values only used if remote state unavailable
+  vpc_id             = null  # Module reads from remote state
+  private_subnet_ids = []    # Module reads from remote state
+  state_bucket       = try(include.root.locals.cfg.state_bucket, "honeyhive-federated-${include.root.locals.sregion}-state")
 
   # Database configuration
   database_name      = "hh-${include.root.locals.deployment}"
