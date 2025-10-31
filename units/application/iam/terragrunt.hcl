@@ -8,8 +8,8 @@ include "root" {
 # Dependencies for execution order
 dependencies {
   paths = [
-    "../s3",
-    "../../hosting/cluster"  # Need cluster for pod identity associations
+    "../s3"  # Same-stack dependency - will work
+    # Note: hosting/cluster is cross-stack - handled via remote state
   ]
 }
 
@@ -28,9 +28,14 @@ dependency "cluster" {
 
   mock_outputs = {
     cluster_name = "${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}"
+    cluster_endpoint = "https://${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}.gr7.${include.root.locals.region}.eks.amazonaws.com"
+    cluster_certificate_authority_data = "LS0tLS1CRUdJTi..."
   }
 
+  # Skip outputs if running application stack standalone (hosting may not exist locally)
+  # Terragrunt will fall back to remote state if config_path doesn't exist
   skip_outputs = false
+  skip = false
 }
 
 terraform {

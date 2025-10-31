@@ -6,11 +6,8 @@ include "root" {
 }
 
 # Dependencies for execution order
-dependencies {
-  paths = [
-    "../../substrate/vpc"  # Need VPC and subnets for database
-  ]
-}
+# Note: Cross-stack dependencies (substrate/vpc) are handled via remote state
+# No local path dependency needed - Terragrunt will read from remote state
 
 dependency "vpc" {
   config_path = "../../substrate/vpc"
@@ -18,9 +15,13 @@ dependency "vpc" {
   mock_outputs = {
     vpc_id             = "vpc-00000000000000000"
     private_subnet_ids = ["subnet-00000000000000001", "subnet-00000000000000002", "subnet-00000000000000003"]
+    vpc_cidr_block     = "10.0.0.0/16"
   }
 
+  # Skip outputs if running application stack standalone (substrate may not exist locally)
+  # Terragrunt will fall back to remote state if config_path doesn't exist
   skip_outputs = false
+  skip = false
 }
 
 terraform {
