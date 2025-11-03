@@ -15,3 +15,8 @@ unit "iam" {
   source = "../../../units/application/iam"
   path   = "iam"
 }
+
+unit "argocd_apps" {
+  source = "../../../units/application/argocd_apps"
+  path   = "argocd_apps"
+}

@@ -10,10 +10,17 @@ stack_configuration:
 
 # Units in this stack
 units:
-  - path: units/application/database-next
-    description: Application databases (RDS, DocumentDB, etc.)
-    # Note: External dependencies on substrate/vpc-next and hosting/cluster-next handled in unit
+  - path: units/application/database
+    description: Application databases (PostgreSQL RDS for control plane)
+    # Note: External dependencies on substrate/vpc handled in unit
     
-  - path: units/application/s3-next
-    description: Application object storage buckets
-    # Note: External dependency on hosting/cluster-next handled in unit
+  - path: units/application/s3
+    description: Application object storage buckets (control plane data store)
+    
+  - path: units/application/iam
+    description: Application IAM roles for control plane services (S3, Secrets Manager, ECR access)
+    # Note: External dependencies on application/s3 and hosting/cluster handled in unit
+    
+  - path: units/application/argocd_apps
+    description: ArgoCD Application for data-stores app-of-apps (Redis, ClickHouse)
+    # Note: External dependencies on hosting/cluster handled in unit

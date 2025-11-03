@@ -1,0 +1,5 @@
+digraph {
+	"/home/honeyhive/Projects/honeyhive-workflows/units/hosting/cluster" ;
+	"/home/honeyhive/Projects/honeyhive-workflows/units/hosting/pod-identities" ;
+	"/home/honeyhive/Projects/honeyhive-workflows/units/hosting/pod-identities" -> "/home/honeyhive/Projects/honeyhive-workflows/units/hosting/cluster";
+}

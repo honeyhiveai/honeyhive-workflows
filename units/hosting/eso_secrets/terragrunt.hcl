@@ -1,4 +1,5 @@
-# ArgoCD Secrets Unit - Repository Deploy Keys in AWS Secrets Manager
+# ESO Secrets Unit - Application Secrets for External Secrets Operator
+# Stores secrets in AWS Secrets Manager (orchestration account) for sync to Kubernetes via ESO
 
 include "root" {
   path   = find_in_parent_folders("includes/stack-config.hcl")
@@ -6,7 +7,7 @@ include "root" {
 }
 
 terraform {
-  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/argocd_secrets?ref=${include.root.locals.terraform_ref}"
+  source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/eso_secrets?ref=${include.root.locals.terraform_ref}"
 }
 
 inputs = {
@@ -32,7 +33,7 @@ inputs = {
     Repository   = "https://github.com/honeyhiveai/deployments.git"
     Stack        = "terragrunt-stacks"
     Layer        = "hosting"
-    Service      = "argocd-secrets"
+    Service      = "eso-secrets"
   }
 }
 

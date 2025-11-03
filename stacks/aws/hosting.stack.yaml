@@ -30,3 +30,7 @@ units:
     description: Pod identity associations for workload authentication
     dependencies:
       - units/hosting/cluster
+  
+  - path: units/hosting/s3
+    description: Observability S3 buckets for OpenTelemetry, Prometheus, and Grafana storage
+    # No dependencies - can run in parallel with other hosting units

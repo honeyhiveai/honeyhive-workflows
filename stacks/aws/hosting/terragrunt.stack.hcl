@@ -30,7 +30,7 @@ unit "s3" {
   path   = "s3"
 }
 
-unit "argocd_secrets" {
-  source = "../../../units/hosting/argocd_secrets"
-  path   = "argocd_secrets"
+unit "eso_secrets" {
+  source = "../../../units/hosting/eso_secrets"
+  path   = "eso_secrets"
 }
