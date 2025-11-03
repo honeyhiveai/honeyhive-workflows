@@ -24,3 +24,8 @@ unit "argocd_apps" {
   source = "../../../units/hosting/argocd_apps"
   path   = "argocd_apps"
 }
+
+unit "s3" {
+  source = "../../../units/hosting/s3"
+  path   = "s3"
+}
