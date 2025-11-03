@@ -87,6 +87,8 @@ on:
         required: false
       HONEYHIVE_ARGOCD_DEPLOY_KEY:
         required: false
+      HONEYHIVE_HELM_DEPLOY_KEY:
+        required: false
 
 jobs:
   deploy:
@@ -106,6 +108,7 @@ jobs:
       TWINGATE_API_TOKEN: ${{ secrets.TWINGATE_API_TOKEN }}
       SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
       HONEYHIVE_ARGOCD_DEPLOY_KEY: ${{ secrets.HONEYHIVE_ARGOCD_DEPLOY_KEY }}
+      HONEYHIVE_HELM_DEPLOY_KEY: ${{ secrets.HONEYHIVE_HELM_DEPLOY_KEY }}
 
     steps:
       - name: Generate GitHub App Token
