@@ -54,5 +54,6 @@ inputs = {
   # ArgoCD Applications configuration
   enable_argocd_applications  = try(include.root.locals.cfg.enable_argocd_applications, true)
   honeyhive_argocd_deploy_key = try(get_env("HONEYHIVE_ARGOCD_DEPLOY_KEY", ""), "")
+  honeyhive_helm_deploy_key   = try(get_env("HONEYHIVE_HELM_DEPLOY_KEY", ""), "")
   honeyhive_argocd_ref        = try(include.root.locals.cfg.honeyhive_argocd_ref, "main")
 }
