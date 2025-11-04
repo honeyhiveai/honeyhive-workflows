@@ -38,12 +38,13 @@ dependency "addons" {
 
 inputs = {
   # Core deployment parameters
-  org         = include.root.locals.org
-  env         = include.root.locals.env
-  region      = include.root.locals.region
-  sregion     = include.root.locals.sregion
-  deployment  = include.root.locals.deployment
-  domain_name = try(include.root.locals.cfg.domain_name, "")
+  org             = include.root.locals.org
+  env             = include.root.locals.env
+  region          = include.root.locals.region
+  sregion         = include.root.locals.sregion
+  deployment      = include.root.locals.deployment
+  domain_name     = try(include.root.locals.cfg.domain_name, "")
+  deployment_type = try(include.root.locals.cfg.deployment_type, "full_stack")
 
   # Cluster information from dependency
   cluster_name                      = dependency.cluster.outputs.cluster_name
