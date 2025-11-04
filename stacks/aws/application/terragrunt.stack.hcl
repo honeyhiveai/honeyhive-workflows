@@ -11,6 +11,11 @@ unit "s3" {
   path   = "s3"
 }
 
+unit "ecr" {
+  source = "../../../units/application/ecr"
+  path   = "ecr"
+}
+
 unit "iam" {
   source = "../../../units/application/iam"
   path   = "iam"

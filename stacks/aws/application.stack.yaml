@@ -17,6 +17,10 @@ units:
   - path: units/application/s3
     description: Application object storage buckets (control plane data store)
     
+  - path: units/application/ecr
+    description: ECR repositories for control plane and data plane services
+    # Note: No external dependencies - creates container registries
+    
   - path: units/application/iam
     description: Application IAM roles for control plane services (S3, Secrets Manager, ECR access)
     # Note: External dependencies on application/s3 and hosting/cluster handled in unit
