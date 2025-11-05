@@ -47,7 +47,8 @@ inputs = {
   # Dependencies
   # Cluster name calculated from naming convention: {org}-{env}-{sregion}-{deployment}
   cluster_name       = "${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}"
-  store_bucket_name  = dependency.s3.outputs.bucket_name
+  # Use try() to handle cases where S3 outputs might not be available yet (mock outputs during plan)
+  store_bucket_name  = try(dependency.s3.outputs.bucket_name, "${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}-store")
   cp_namespace       = "control-plane"
   dp_namespace       = "data-plane"
 
