@@ -34,7 +34,8 @@ units:
     # Note: External dependencies on application/s3 and hosting/cluster handled in unit
     
   - path: units/application/argocd_apps
-    description: ArgoCD Application for data-stores app-of-apps (Redis, ClickHouse)
+    description: ArgoCD Application for honeyhive-apps app-of-apps (deployed via Helm to avoid provider issues)
     # Note: External dependencies on hosting/cluster handled in unit
     dependencies:
-      - units/application/secrets_configs  # ArgoCD needs secrets/config values
+      - units/application/secrets_configs  # ArgoCD needs IAM roles and ECR URLs
+      - units/application/iam  # ArgoCD needs IAM roles for services

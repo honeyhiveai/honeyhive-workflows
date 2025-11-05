@@ -56,11 +56,10 @@ units:
       - units/application/secrets_configs  # ExternalSecrets reads remote state from secrets_configs
   
   - path: units/hosting/argocd_apps
-    description: ArgoCD Applications for GitOps workload deployment
+    description: ArgoCD Applications for core-utils, observability, and data-stores
     dependencies:
       - units/hosting/addons  # ArgoCD must be installed first
       - units/hosting/external_secrets  # ExternalSecrets must exist before ArgoCD apps deploy
-      - units/application/secrets_configs  # ArgoCD needs secrets/configs outputs for application deployment
   
   # Application layer - workloads
   - path: units/application/database
@@ -92,3 +91,11 @@ units:
     dependencies:
       - units/hosting/cluster
       - units/hosting/pod-identities
+  
+  - path: units/application/argocd_apps
+    description: ArgoCD Application for honeyhive-apps app-of-apps (deployed via Helm to avoid provider issues)
+    dependencies:
+      - units/hosting/cluster  # Need cluster for Helm provider
+      - units/hosting/addons  # ArgoCD must be installed first
+      - units/application/secrets_configs  # ArgoCD needs IAM roles and ECR URLs
+      - units/application/iam  # ArgoCD needs IAM roles for services

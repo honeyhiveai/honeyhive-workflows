@@ -87,3 +87,9 @@ unit "iam" {
 
 }
 
+unit "argocd_apps" {
+  source = "../../../units/application/argocd_apps"
+  path   = "application/argocd_apps"
+
+}
+

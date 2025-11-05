@@ -62,9 +62,6 @@ inputs = {
   honeyhive_helm_deploy_key   = try(get_env("HONEYHIVE_HELM_DEPLOY_KEY", ""), "")
   honeyhive_argocd_ref        = try(include.root.locals.cfg.honeyhive_argocd_ref, "main")
 
-  # State bucket for remote state lookup (cross-stack dependency)
-  state_bucket = try(include.root.locals.cfg.state_bucket, "honeyhive-federated-${include.root.locals.sregion}-state")
-  
-  # Secrets and configs - will be read from remote state if not provided
-  secrets_configs = null  # Let module read from remote state
+  # NOTE: secrets_configs and state_bucket removed
+  # honeyhive-apps has been moved to application/aws/kubernetes/argocd_apps
 }
