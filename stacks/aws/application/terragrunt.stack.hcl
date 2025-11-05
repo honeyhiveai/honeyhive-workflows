@@ -16,6 +16,11 @@ unit "ecr" {
   path   = "ecr"
 }
 
+unit "secrets_configs" {
+  source = "../../../units/application/secrets_configs"
+  path   = "secrets_configs"
+}
+
 unit "iam" {
   source = "../../../units/application/iam"
   path   = "iam"
