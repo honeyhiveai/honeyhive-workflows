@@ -26,10 +26,12 @@ units:
     skip: ${get_env("SKIP_TWINGATE", "false")}
   
   # Hosting layer - platform
+  # Block all hosting units until substrate layer completes
   - path: units/hosting/cluster
     description: EKS Kubernetes cluster
     dependencies:
       - units/substrate/vpc
+      - units/substrate/dns  # Ensure substrate layer completes first
     
   - path: units/hosting/karpenter
     description: Kubernetes autoscaler
@@ -62,11 +64,13 @@ units:
       - units/hosting/external_secrets  # ExternalSecrets must exist before ArgoCD apps deploy
   
   # Application layer - workloads
+  # Block all application units until hosting layer completes
   - path: units/application/database
     description: Application database
     dependencies:
       - units/substrate/vpc
       - units/hosting/cluster
+      - units/hosting/addons  # Ensure hosting layer completes first
     
   - path: units/application/s3
     description: Application storage
