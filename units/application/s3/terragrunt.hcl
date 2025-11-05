@@ -17,6 +17,9 @@ inputs = {
   sregion    = include.root.locals.sregion
   deployment = include.root.locals.deployment
 
+  # Import existing bucket if needed (for buckets created outside Terraform)
+  import_existing_bucket = try(include.root.locals.cfg.import_existing_bucket, false)
+
   # Tags from parent configuration
   tags = {
     Organization = include.root.locals.org
