@@ -5,12 +5,8 @@ include "root" {
   expose = true
 }
 
-# Dependencies to ensure hosting layer completes before application starts
-dependencies {
-  paths = [
-    "../../hosting/addons"  # Ensure hosting layer completes before application starts
-  ]
-}
+# Note: Cross-stack dependencies for sequencing are handled by full.stack.yaml
+# When running standalone application stack, these dependencies are not needed
 
 # Cross-stack dependency on substrate/vpc
 # NOTE: Dependency block removed - Terragrunt Stacks cannot process cross-stack

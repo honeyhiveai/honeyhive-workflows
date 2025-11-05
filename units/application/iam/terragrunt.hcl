@@ -8,9 +8,10 @@ include "root" {
 # Dependencies for execution order
 dependencies {
   paths = [
-    "../s3",              # Same-stack dependency - will work
-    "../../hosting/addons"  # Ensure hosting layer completes before application starts
-    # Note: hosting/cluster is cross-stack - handled via remote state
+    "../s3"  # Same-stack dependency - will work
+    # Note: Cross-stack dependencies for sequencing are handled by full.stack.yaml
+    # When running standalone application stack, hosting dependencies are not needed
+    # hosting/cluster is cross-stack - handled via remote state
   ]
 }
 

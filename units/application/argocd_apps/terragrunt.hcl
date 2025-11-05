@@ -5,12 +5,9 @@ include "root" {
   expose = true
 }
 
-# Dependencies to ensure hosting layer completes before application starts
-dependencies {
-  paths = [
-    "../../hosting/addons"  # Ensure hosting layer completes before application starts
-  ]
-}
+# Note: Cross-stack dependencies for sequencing are handled by full.stack.yaml
+# When running standalone application stack, these dependencies are not needed
+# The dependency block below is for output passing only (with mock outputs)
 
 terraform {
   source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//application/aws/kubernetes/argocd_apps?ref=${include.root.locals.terraform_ref}"

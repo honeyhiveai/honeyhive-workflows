@@ -6,12 +6,8 @@ include "root" {
   expose = true
 }
 
-# Dependencies to ensure hosting layer completes before application starts
-dependencies {
-  paths = [
-    "../../hosting/addons"  # Ensure hosting layer completes before application starts
-  ]
-}
+# Note: Cross-stack dependencies for sequencing are handled by full.stack.yaml
+# When running standalone application stack, these dependencies are not needed
 
 terraform {
   source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//application/aws/secrets_configs?ref=${include.root.locals.terraform_ref}"
