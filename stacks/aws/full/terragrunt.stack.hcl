@@ -44,6 +44,18 @@ unit "pod_identities" {
 
 }
 
+unit "external_secrets" {
+  source = "../../../units/hosting/external_secrets"
+  path   = "hosting/external_secrets"
+
+}
+
+unit "argocd_apps" {
+  source = "../../../units/hosting/argocd_apps"
+  path   = "hosting/argocd_apps"
+
+}
+
 # Application Layer
 unit "database" {
   source = "../../../units/application/database"
@@ -54,6 +66,18 @@ unit "database" {
 unit "s3" {
   source = "../../../units/application/s3"
   path   = "application/s3"
+
+}
+
+unit "secrets_configs" {
+  source = "../../../units/application/secrets_configs"
+  path   = "application/secrets_configs"
+
+}
+
+unit "iam" {
+  source = "../../../units/application/iam"
+  path   = "application/iam"
 
 }
 
