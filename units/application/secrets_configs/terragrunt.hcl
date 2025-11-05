@@ -43,17 +43,17 @@ dependency "iam" {
 
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
   mock_outputs = {
-    cp_writer_role_arn      = "arn:aws:iam::123456789012:role/mock-cp-writer"
-    cp_controller_role_arn  = "arn:aws:iam::123456789012:role/mock-cp-controller"
-    cp_backend_role_arn     = "arn:aws:iam::123456789012:role/mock-cp-backend"
-    cp_notification_role_arn = "arn:aws:iam::123456789012:role/mock-cp-notification"
-    cp_frontend_role_arn    = "arn:aws:iam::123456789012:role/mock-cp-frontend"
-    dp_ingestion_role_arn   = "arn:aws:iam::123456789012:role/mock-dp-ingestion"
-    dp_controller_role_arn  = "arn:aws:iam::123456789012:role/mock-dp-controller"
-    dp_evaluation_role_arn  = "arn:aws:iam::123456789012:role/mock-dp-evaluation"
-    dp_backend_role_arn     = "arn:aws:iam::123456789012:role/mock-dp-backend"
-    dp_pythonmetric_role_arn = "arn:aws:iam::123456789012:role/mock-dp-pythonmetric"
-    dp_llmproxy_role_arn    = "arn:aws:iam::123456789012:role/mock-dp-llmproxy"
+    cp_writer_role_arn      = "arn:aws:iam::123456789012:role/mock-CpWriter"
+    cp_controller_role_arn  = "arn:aws:iam::123456789012:role/mock-CpController"
+    cp_backend_role_arn     = "arn:aws:iam::123456789012:role/mock-CpBackend"
+    cp_notification_role_arn = "arn:aws:iam::123456789012:role/mock-CpNotification"
+    cp_frontend_role_arn    = "arn:aws:iam::123456789012:role/mock-CpFrontend"
+    dp_ingestion_role_arn   = "arn:aws:iam::123456789012:role/mock-DpIngestion"
+    dp_controller_role_arn  = "arn:aws:iam::123456789012:role/mock-DpController"
+    dp_evaluation_role_arn  = "arn:aws:iam::123456789012:role/mock-DpEvaluation"
+    dp_backend_role_arn     = "arn:aws:iam::123456789012:role/mock-DpBackend"
+    dp_pythonmetric_role_arn = "arn:aws:iam::123456789012:role/mock-DpPythonMetric"
+    dp_llmproxy_role_arn    = "arn:aws:iam::123456789012:role/mock-DpLlmProxy"
   }
 
   skip_outputs = false
