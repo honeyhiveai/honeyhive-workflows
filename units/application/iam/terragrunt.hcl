@@ -42,9 +42,11 @@ inputs = {
   account_id = include.root.locals.account_id
 
   # Dependencies
-  cluster_name       = null  # TODO: Module should read from remote state (hosting/cluster)
+  # Cluster name calculated from naming convention: {org}-{env}-{sregion}-{deployment}
+  cluster_name       = "${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}"
   store_bucket_name  = dependency.s3.outputs.bucket_name
   cp_namespace       = "control-plane"
+  dp_namespace       = "data-plane"
 
   # Tags from parent configuration
   tags = {
