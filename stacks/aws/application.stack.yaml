@@ -13,6 +13,7 @@ units:
   - path: units/application/database
     description: Application databases (PostgreSQL RDS for control plane)
     # Note: External dependencies on substrate/vpc handled in unit
+    skip: ${get_env("SKIP_DATABASE", "false")}
     
   - path: units/application/s3
     description: Application object storage buckets (control plane data store)
@@ -20,6 +21,13 @@ units:
   - path: units/application/ecr
     description: ECR repositories for control plane and data plane services
     # Note: No external dependencies - creates container registries
+    skip: ${get_env("SKIP_ECR", "false")}
+    
+  - path: units/application/secrets_configs
+    description: Aggregates secrets and configs from modules/user config, stores in Secrets Manager, provides ConfigMap values
+    dependencies:
+      - units/application/database  # Optional - module handles missing outputs gracefully
+      - units/application/ecr       # Optional - module handles missing outputs gracefully
     
   - path: units/application/iam
     description: Application IAM roles for control plane services (S3, Secrets Manager, ECR access)
@@ -28,3 +36,5 @@ units:
   - path: units/application/argocd_apps
     description: ArgoCD Application for data-stores app-of-apps (Redis, ClickHouse)
     # Note: External dependencies on hosting/cluster handled in unit
+    dependencies:
+      - units/application/secrets_configs  # ArgoCD needs secrets/config values

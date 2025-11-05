@@ -36,6 +36,22 @@ dependency "addons" {
   skip_outputs = false
 }
 
+# Cross-stack dependency on application/secrets_configs
+# Read from remote state since it's in a different stack
+# Using dependency block with skip_outputs to handle missing state gracefully
+dependency "secrets_configs" {
+  config_path = "../../application/secrets_configs"
+
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs = {
+    database_config              = null
+    database_password_secret_name = null
+    ecr_repository_urls          = {}
+  }
+
+  skip_outputs = false
+}
+
 inputs = {
   # Core deployment parameters
   org             = include.root.locals.org
@@ -57,4 +73,12 @@ inputs = {
   honeyhive_argocd_deploy_key = try(get_env("HONEYHIVE_ARGOCD_DEPLOY_KEY", ""), "")
   honeyhive_helm_deploy_key   = try(get_env("HONEYHIVE_HELM_DEPLOY_KEY", ""), "")
   honeyhive_argocd_ref        = try(include.root.locals.cfg.honeyhive_argocd_ref, "main")
+
+  # Secrets and configs from application stack (cross-stack dependency)
+  # Read from dependency block - secrets_configs unit in application stack
+  secrets_configs = try(dependency.secrets_configs.outputs, null) != null ? {
+    database_config = try(dependency.secrets_configs.outputs.database_config, null)
+    database_password_secret_name = try(dependency.secrets_configs.outputs.database_password_secret_name, null)
+    ecr_repository_urls = try(dependency.secrets_configs.outputs.ecr_repository_urls, {})
+  } : null
 }
