@@ -53,6 +53,7 @@ units:
     dependencies:
       - units/hosting/pod-identities  # ESO needs pod identity to access secrets
       - units/hosting/addons  # ESO must be installed first
+      - units/application/secrets_configs  # ExternalSecrets reads remote state from secrets_configs
   
   - path: units/hosting/argocd_apps
     description: ArgoCD Applications for GitOps workload deployment
