@@ -52,8 +52,8 @@ inputs = {
   # State bucket for remote state lookup (cross-stack dependency)
   state_bucket = try(include.root.locals.cfg.state_bucket, "honeyhive-federated-${include.root.locals.sregion}-state")
   
-  # Database configuration - will be read from remote state if not provided
-  database_config = null  # Let module read from remote state
+  # Database URI base - will be read from remote state if not provided
+  database_uri_base = ""  # Let module read from remote state
   database_password_secret_name = null  # Let module read from remote state
 
   # Namespace configuration
