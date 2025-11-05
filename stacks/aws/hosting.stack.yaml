@@ -36,11 +36,17 @@ units:
     dependencies:
       - units/hosting/pod-identities  # ESO needs pod identity to access secrets
   
+  - path: units/hosting/external_secrets
+    description: Kubernetes ExternalSecret resources that pull secrets from AWS Secrets Manager
+    dependencies:
+      - units/hosting/pod-identities  # ESO needs pod identity to access secrets
+      - units/hosting/addons  # ESO must be installed first
+  
   - path: units/hosting/argocd_apps
     description: ArgoCD Applications for GitOps workload deployment
     dependencies:
       - units/hosting/addons  # ArgoCD must be installed first
-      - units/hosting/eso_secrets  # Secrets must exist before ArgoCD apps reference them
+      - units/hosting/external_secrets  # ExternalSecrets must exist before ArgoCD apps deploy
   
   - path: units/hosting/s3
     description: Observability S3 buckets for OpenTelemetry, Prometheus, and Grafana storage
