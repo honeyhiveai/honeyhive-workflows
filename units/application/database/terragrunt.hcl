@@ -5,6 +5,13 @@ include "root" {
   expose = true
 }
 
+# Dependencies to ensure hosting layer completes before application starts
+dependencies {
+  paths = [
+    "../../hosting/addons"  # Ensure hosting layer completes before application starts
+  ]
+}
+
 # Cross-stack dependency on substrate/vpc
 # NOTE: Dependency block removed - Terragrunt Stacks cannot process cross-stack
 # dependencies when paths don't exist locally. Module should read from remote state.

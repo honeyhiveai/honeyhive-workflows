@@ -6,6 +6,13 @@ include "root" {
   expose = true
 }
 
+# Dependencies to ensure hosting layer completes before application starts
+dependencies {
+  paths = [
+    "../../hosting/addons"  # Ensure hosting layer completes before application starts
+  ]
+}
+
 terraform {
   source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//application/aws/secrets_configs?ref=${include.root.locals.terraform_ref}"
 }

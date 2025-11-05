@@ -5,6 +5,13 @@ include "root" {
   expose = true
 }
 
+# Dependencies to ensure substrate layer completes first
+dependencies {
+  paths = [
+    "../../substrate/dns"  # Ensure substrate layer completes before hosting starts
+  ]
+}
+
 terraform {
   source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/kubernetes/cluster?ref=${include.root.locals.terraform_ref}"
 }
