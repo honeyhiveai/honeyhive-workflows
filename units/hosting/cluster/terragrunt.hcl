@@ -5,12 +5,9 @@ include "root" {
   expose = true
 }
 
-# Dependencies to ensure substrate layer completes first
-dependencies {
-  paths = [
-    "../../substrate/dns"  # Ensure substrate layer completes before hosting starts
-  ]
-}
+# Note: Cross-stack dependencies for sequencing are handled by full.stack.yaml
+# When running standalone hosting stack, substrate layer should already be deployed
+# The cluster module doesn't require DNS outputs - dependency was for sequencing only
 
 terraform {
   source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//hosting/aws/kubernetes/cluster?ref=${include.root.locals.terraform_ref}"
