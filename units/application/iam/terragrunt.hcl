@@ -18,6 +18,7 @@ dependencies {
 dependency "s3" {
   config_path = "../s3"
 
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
   mock_outputs = {
     bucket_name = "${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}-store"
   }
