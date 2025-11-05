@@ -37,20 +37,8 @@ dependency "addons" {
 }
 
 # Cross-stack dependency on application/secrets_configs
-# Read from remote state since it's in a different stack
-# Using dependency block with skip_outputs to handle missing state gracefully
-dependency "secrets_configs" {
-  config_path = "../../application/secrets_configs"
-
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
-  mock_outputs = {
-    database_config              = null
-    database_password_secret_name = null
-    ecr_repository_urls          = {}
-  }
-
-  skip_outputs = false
-}
+# Note: We use Terraform remote state lookups in the module instead of Terragrunt dependency
+# This avoids Terragrunt trying to parse files from a different stack during dependency discovery
 
 inputs = {
   # Core deployment parameters
@@ -74,11 +62,9 @@ inputs = {
   honeyhive_helm_deploy_key   = try(get_env("HONEYHIVE_HELM_DEPLOY_KEY", ""), "")
   honeyhive_argocd_ref        = try(include.root.locals.cfg.honeyhive_argocd_ref, "main")
 
-  # Secrets and configs from application stack (cross-stack dependency)
-  # Read from dependency block - secrets_configs unit in application stack
-  secrets_configs = try(dependency.secrets_configs.outputs, null) != null ? {
-    database_config = try(dependency.secrets_configs.outputs.database_config, null)
-    database_password_secret_name = try(dependency.secrets_configs.outputs.database_password_secret_name, null)
-    ecr_repository_urls = try(dependency.secrets_configs.outputs.ecr_repository_urls, {})
-  } : null
+  # State bucket for remote state lookup (cross-stack dependency)
+  state_bucket = try(include.root.locals.cfg.state_bucket, "honeyhive-federated-${include.root.locals.sregion}-state")
+  
+  # Secrets and configs - will be read from remote state if not provided
+  secrets_configs = null  # Let module read from remote state
 }
