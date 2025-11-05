@@ -39,8 +39,8 @@ unit "addons" {
 }
 
 unit "pod_identities" {
-  source = "../../../units/hosting/pod_identities"
-  path   = "hosting/pod_identities"
+  source = "../../../units/hosting/pod-identities"
+  path   = "hosting/pod-identities"
 
 }
 
