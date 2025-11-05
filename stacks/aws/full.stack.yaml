@@ -48,6 +48,19 @@ units:
     dependencies:
       - units/hosting/cluster-next
   
+  - path: units/hosting/external_secrets
+    description: Kubernetes ExternalSecret resources that pull secrets from AWS Secrets Manager
+    dependencies:
+      - units/hosting/pod-identities-next  # ESO needs pod identity to access secrets
+      - units/hosting/addons-next  # ESO must be installed first
+  
+  - path: units/hosting/argocd_apps
+    description: ArgoCD Applications for GitOps workload deployment
+    dependencies:
+      - units/hosting/addons-next  # ArgoCD must be installed first
+      - units/hosting/external_secrets  # ExternalSecrets must exist before ArgoCD apps deploy
+      - units/application/secrets_configs  # ArgoCD needs secrets/configs outputs for application deployment
+  
   # Application layer - workloads
   - path: units/application/database-next
     description: Application database
@@ -59,3 +72,22 @@ units:
     description: Application storage
     dependencies:
       - units/hosting/cluster-next
+  
+  - path: units/application/ecr
+    description: ECR repositories for control plane and data plane services
+    dependencies:
+      - units/hosting/cluster-next
+    skip: ${get_env("SKIP_ECR", "false")}
+  
+  - path: units/application/secrets_configs
+    description: Aggregates secrets and configs from application modules
+    dependencies:
+      - units/application/database-next
+      - units/application/ecr  # Optional - can be skipped
+      - units/hosting/cluster-next
+  
+  - path: units/application/iam
+    description: IAM roles and pod identity associations for services
+    dependencies:
+      - units/hosting/cluster-next
+      - units/hosting/pod-identities-next
