@@ -76,11 +76,13 @@ units:
     description: Application storage
     dependencies:
       - units/hosting/cluster
+      - units/hosting/addons  # Ensure hosting layer completes first
   
   - path: units/application/ecr
     description: ECR repositories for control plane and data plane services
     dependencies:
       - units/hosting/cluster
+      - units/hosting/addons  # Ensure hosting layer completes first
     skip: ${get_env("SKIP_ECR", "false")}
   
   - path: units/application/secrets_configs
@@ -95,6 +97,7 @@ units:
     dependencies:
       - units/hosting/cluster
       - units/hosting/pod-identities
+      - units/hosting/addons  # Ensure hosting layer completes first
   
   - path: units/application/argocd_apps
     description: ArgoCD Application for honeyhive-apps app-of-apps (deployed via Helm to avoid provider issues)
