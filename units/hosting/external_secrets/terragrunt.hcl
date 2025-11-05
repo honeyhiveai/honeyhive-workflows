@@ -29,18 +29,8 @@ dependency "cluster" {
 }
 
 # Cross-stack dependency on application/secrets_configs
-# Read from remote state since it's in a different stack
-dependency "secrets_configs" {
-  config_path = "../../application/secrets_configs"
-
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
-  mock_outputs = {
-    database_config              = null
-    database_password_secret_name = null
-  }
-
-  skip_outputs = false
-}
+# Note: We use Terraform remote state lookups in the module instead of Terragrunt dependency
+# This avoids Terragrunt trying to parse files from a different stack during dependency discovery
 
 terraform {
   source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//application/aws/kubernetes/external_secrets?ref=${include.root.locals.terraform_ref}"
@@ -59,9 +49,12 @@ inputs = {
   cluster_endpoint                  = dependency.cluster.outputs.cluster_endpoint
   cluster_certificate_authority_data = dependency.cluster.outputs.cluster_certificate_authority_data
 
-  # Database configuration from application stack (cross-stack dependency)
-  database_config = try(dependency.secrets_configs.outputs.database_config, null)
-  database_password_secret_name = try(dependency.secrets_configs.outputs.database_password_secret_name, null)
+  # State bucket for remote state lookup (cross-stack dependency)
+  state_bucket = try(include.root.locals.cfg.state_bucket, "honeyhive-federated-${include.root.locals.sregion}-state")
+  
+  # Database configuration - will be read from remote state if not provided
+  database_config = null  # Let module read from remote state
+  database_password_secret_name = null  # Let module read from remote state
 
   # Namespace configuration
   data_plane_namespace = "data-plane"
