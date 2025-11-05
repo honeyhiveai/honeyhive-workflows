@@ -69,6 +69,12 @@ unit "s3" {
 
 }
 
+unit "ecr" {
+  source = "../../../units/application/ecr"
+  path   = "application/ecr"
+
+}
+
 unit "secrets_configs" {
   source = "../../../units/application/secrets_configs"
   path   = "application/secrets_configs"
