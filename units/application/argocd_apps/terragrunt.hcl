@@ -6,26 +6,17 @@ include "root" {
 }
 
 # Note: Cross-stack dependencies for sequencing are handled by full.stack.yaml
-# When running standalone application stack, these dependencies are not needed
-# The dependency block below is for output passing only (with mock outputs)
+# When running standalone application stack, cluster information is read from remote state
+# The module's remote state lookup will handle fetching cluster outputs from hosting/cluster
 
 terraform {
   source = "git::https://github.com/honeyhiveai/honeyhive-terraform.git//application/aws/kubernetes/argocd_apps?ref=${include.root.locals.terraform_ref}"
 }
 
 # Cross-stack dependency on hosting/cluster
-dependency "cluster" {
-  config_path = "../../hosting/cluster"
-
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
-  mock_outputs = {
-    cluster_name                      = "${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}"
-    cluster_endpoint                  = "https://${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}.gr7.${include.root.locals.region}.eks.amazonaws.com"
-    cluster_certificate_authority_data = "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURCVENDQWUyZ0F3SUJBZ0lJT3l5VDN1RzJFUDh3RFFZSktvWklodmNOQVFFTEJRQXdGVEVUTUJFR0ExVUUKQXhNS2EzVmlaWEp1WlhSbGN6QWVGdzB5TlRFd01qRXdPVEUwTVRKYUZ3MHpOVEV3TVRrd09URTVNVEphTUJVeApFekFSQmdOVkJBTVRDbXQxWW1WeWJtVjBaWE13Z2dFaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLCkFvSUJBUUM4TDZvcE85ak1XaXg3VjNzcGp5SE96blkyZEJhYTBQMUxRRzNRRGZUOWV4cUxSNFdETE5nNXNjYjkKbU1XTWpxMWhucnova2crUXB1b3krU25VM1U0OVBTd1haaHNJb0xTTVAzVGNTT3k4cUN2b1R1SDdFRE9oMS9zcgpuMy85TStJWjM5WDBRUHBJZzU3NlU5SEhLbERLRUoxMzNEY0pyKzRqYjIxQ2NkM0I5NlppSW9yOXRVNHN6VXloCmRETFpBNG5uSmNvQXpadnVaaEFIVE9LTHpVNG9TeEFHZGplVUlXZ2VYVzFpNmhQemk1MmtsUjZVcTk2MllRYk8KWXpWdDU2bjBPbWtkd3N0NmptR3FzVzJLNWtVY3RFWHpReDV5MGF6eFZRbFBIZUR0VW5jZzVZdnY1eVZYSjhZQgoxOXhNTWgrZkk0Tm5OSkFaaUowL3puamtMSStaQWdNQkFBR2pXVEJYTUE0R0ExVWREd0VCL3dRRUF3SUNwREFQCkJnTlZIUk1CQWY4RUJUQURBUUgvTUIwR0ExVWREZ1FXQkJUWXd1Ukw3T2RxeW5JY2ZBZWl3MXMzcmxnMGRUQVYKQmdOVkhSRUVEakFNZ2dwcmRXSmxjbTVsZEdWek1BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQWZON0tlaGp5NApzeWtaS0lXdHU3dkpMaUxpUmZrZFJ6cU1rcnJYN2xBa1A0cTdKK3dPWnB6U2tCbGpNbk91eUFLL1lXdzBpUDl1CklWNE1GdkRiRGdvNFV1akRlVWQ3QmlwMWJKeXF2ZFBicExjZTd2anp0S2kzR1owOTcrMHN6Sk9WeFpwMWhmdnEKTCtzTE41KzVocXJNWS8yV1kwbE5uSVVrSGRPRFlmODNzTjQ5Rm5CZS9US0x6K2VoUVlMUXVQUXh1eVFHaElMdAovaFZicjNpS0dGUkF3SWNyRTl2N3JxbFJwejdUdmhWaytiZGRKaGVZY2w3eWhwNEgzd1dHZUpTM1hBY05weTJiCktueWhkMmZ0WHphaExIMEhVSktxSWIyVnZzclJUT2JZSlh5UmdGb0pZcHh3dzY2MjZVUDdCaTZtMzQ2ZkVaazIKblhUOTlBVzFRQzBBCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
-  }
-
-  skip_outputs = false
-}
+# NOTE: Dependency block removed - Terragrunt Stacks cannot process cross-stack
+# dependencies when paths don't exist locally. Module reads cluster outputs from remote state
+# when cluster_endpoint is not provided as input.
 
 # Dependency on secrets_configs for IAM roles and ECR URLs
 dependency "secrets_configs" {
@@ -55,10 +46,13 @@ inputs = {
   domain_name = try(include.root.locals.cfg.domain_name, "")
   deployment_type = try(include.root.locals.cfg.deployment_type, "full_stack")
 
-  # Cluster information from dependency
-  cluster_name                      = dependency.cluster.outputs.cluster_name
-  cluster_endpoint                  = dependency.cluster.outputs.cluster_endpoint
-  cluster_certificate_authority_data = dependency.cluster.outputs.cluster_certificate_authority_data
+  # Cluster information - module reads from remote state if not provided
+  # For standalone application stack runs, cluster info comes from remote state
+  # For full stack runs, cluster info would come from dependency (but we removed it)
+  # Module will compute cluster name from naming convention if not provided
+  cluster_name                      = "${include.root.locals.org}-${include.root.locals.env}-${include.root.locals.sregion}-${include.root.locals.deployment}"
+  cluster_endpoint                  = null  # Module will read from remote state
+  cluster_certificate_authority_data = null  # Module will read from remote state
 
   # ArgoCD Application configuration
   enable_argocd_applications  = try(include.root.locals.cfg.enable_argocd_applications, true)
