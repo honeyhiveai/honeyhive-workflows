@@ -37,6 +37,28 @@ dependency "ecr" {
   skip_outputs = false
 }
 
+# IAM dependency (optional - if IAM unit is skipped)
+dependency "iam" {
+  config_path = "../iam"
+
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs = {
+    cp_writer_role_arn      = "arn:aws:iam::123456789012:role/mock-cp-writer"
+    cp_controller_role_arn  = "arn:aws:iam::123456789012:role/mock-cp-controller"
+    cp_backend_role_arn     = "arn:aws:iam::123456789012:role/mock-cp-backend"
+    cp_notification_role_arn = "arn:aws:iam::123456789012:role/mock-cp-notification"
+    cp_frontend_role_arn    = "arn:aws:iam::123456789012:role/mock-cp-frontend"
+    dp_ingestion_role_arn   = "arn:aws:iam::123456789012:role/mock-dp-ingestion"
+    dp_controller_role_arn  = "arn:aws:iam::123456789012:role/mock-dp-controller"
+    dp_evaluation_role_arn  = "arn:aws:iam::123456789012:role/mock-dp-evaluation"
+    dp_backend_role_arn     = "arn:aws:iam::123456789012:role/mock-dp-backend"
+    dp_pythonmetric_role_arn = "arn:aws:iam::123456789012:role/mock-dp-pythonmetric"
+    dp_llmproxy_role_arn    = "arn:aws:iam::123456789012:role/mock-dp-llmproxy"
+  }
+
+  skip_outputs = false
+}
+
 inputs = {
   # Core variables
   org        = include.root.locals.org
@@ -59,6 +81,21 @@ inputs = {
   ecr_outputs = {
     repository_urls = try(dependency.ecr.outputs.repository_urls, {})
   }
+
+  # IAM outputs (optional)
+  iam_outputs = try(dependency.iam.outputs, null) != null ? {
+    cp_writer_role_arn      = try(dependency.iam.outputs.cp_writer_role_arn, null)
+    cp_controller_role_arn  = try(dependency.iam.outputs.cp_controller_role_arn, null)
+    cp_backend_role_arn     = try(dependency.iam.outputs.cp_backend_role_arn, null)
+    cp_notification_role_arn = try(dependency.iam.outputs.cp_notification_role_arn, null)
+    cp_frontend_role_arn    = try(dependency.iam.outputs.cp_frontend_role_arn, null)
+    dp_ingestion_role_arn   = try(dependency.iam.outputs.dp_ingestion_role_arn, null)
+    dp_controller_role_arn  = try(dependency.iam.outputs.dp_controller_role_arn, null)
+    dp_evaluation_role_arn  = try(dependency.iam.outputs.dp_evaluation_role_arn, null)
+    dp_backend_role_arn     = try(dependency.iam.outputs.dp_backend_role_arn, null)
+    dp_pythonmetric_role_arn = try(dependency.iam.outputs.dp_pythonmetric_role_arn, null)
+    dp_llmproxy_role_arn    = try(dependency.iam.outputs.dp_llmproxy_role_arn, null)
+  } : null
 
   # User config overrides (when modules are disabled - passed from config file)
   # These can be set via config file when database/ecr units are skipped
