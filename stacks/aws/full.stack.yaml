@@ -11,83 +11,83 @@ stack_configuration:
 # All units with proper dependency ordering
 units:
   # Substrate layer - foundation
-  - path: units/substrate/vpc-next
+  - path: units/substrate/vpc
     description: Virtual Private Cloud
     
-  - path: units/substrate/dns-next
+  - path: units/substrate/dns
     description: Private DNS zone
     dependencies:
-      - units/substrate/vpc-next
+      - units/substrate/vpc
     
-  - path: units/substrate/twingate-next
+  - path: units/substrate/twingate
     description: Zero-trust VPN
     dependencies:
-      - units/substrate/vpc-next
+      - units/substrate/vpc
     skip: ${get_env("SKIP_TWINGATE", "false")}
   
   # Hosting layer - platform
-  - path: units/hosting/cluster-next
+  - path: units/hosting/cluster
     description: EKS Kubernetes cluster
     dependencies:
-      - units/substrate/vpc-next
+      - units/substrate/vpc
     
-  - path: units/hosting/karpenter-next
+  - path: units/hosting/karpenter
     description: Kubernetes autoscaler
     dependencies:
-      - units/hosting/cluster-next
+      - units/hosting/cluster
     skip: ${get_env("SKIP_KARPENTER", "false")}
     
-  - path: units/hosting/addons-next
+  - path: units/hosting/addons
     description: EKS cluster addons
     dependencies:
-      - units/hosting/cluster-next
-      - units/hosting/karpenter-next  # If karpenter is skipped, this dependency is ignored
+      - units/hosting/cluster
+      - units/hosting/karpenter  # If karpenter is skipped, this dependency is ignored
     
-  - path: units/hosting/pod-identities-next
+  - path: units/hosting/pod-identities
     description: Pod identity associations
     dependencies:
-      - units/hosting/cluster-next
+      - units/hosting/cluster
   
   - path: units/hosting/external_secrets
     description: Kubernetes ExternalSecret resources that pull secrets from AWS Secrets Manager
     dependencies:
-      - units/hosting/pod-identities-next  # ESO needs pod identity to access secrets
-      - units/hosting/addons-next  # ESO must be installed first
+      - units/hosting/pod-identities  # ESO needs pod identity to access secrets
+      - units/hosting/addons  # ESO must be installed first
   
   - path: units/hosting/argocd_apps
     description: ArgoCD Applications for GitOps workload deployment
     dependencies:
-      - units/hosting/addons-next  # ArgoCD must be installed first
+      - units/hosting/addons  # ArgoCD must be installed first
       - units/hosting/external_secrets  # ExternalSecrets must exist before ArgoCD apps deploy
       - units/application/secrets_configs  # ArgoCD needs secrets/configs outputs for application deployment
   
   # Application layer - workloads
-  - path: units/application/database-next
+  - path: units/application/database
     description: Application database
     dependencies:
-      - units/substrate/vpc-next
-      - units/hosting/cluster-next
+      - units/substrate/vpc
+      - units/hosting/cluster
     
-  - path: units/application/s3-next
+  - path: units/application/s3
     description: Application storage
     dependencies:
-      - units/hosting/cluster-next
+      - units/hosting/cluster
   
   - path: units/application/ecr
     description: ECR repositories for control plane and data plane services
     dependencies:
-      - units/hosting/cluster-next
+      - units/hosting/cluster
     skip: ${get_env("SKIP_ECR", "false")}
   
   - path: units/application/secrets_configs
     description: Aggregates secrets and configs from application modules
     dependencies:
-      - units/application/database-next
+      - units/application/database
       - units/application/ecr  # Optional - can be skipped
-      - units/hosting/cluster-next
+      - units/hosting/cluster
   
   - path: units/application/iam
     description: IAM roles and pod identity associations for services
     dependencies:
-      - units/hosting/cluster-next
-      - units/hosting/pod-identities-next
+      - units/hosting/cluster
+      - units/hosting/pod-identities
