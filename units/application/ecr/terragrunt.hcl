@@ -23,6 +23,9 @@ inputs = {
   # Deployment type determines which repos to create
   deployment_type = try(include.root.locals.cfg.deployment_type, "full_stack")
 
+  # Enable ECR repository creation (default: false to avoid conflicts with existing repos)
+  enabled = try(include.root.locals.cfg.enable_ecr, false)
+
   # Tags from parent configuration
   tags = {
     Organization = include.root.locals.org
