@@ -5,6 +5,9 @@ include "root" {
   expose = true
 }
 
+# Skip this unit if enable_ecr is false (default: false to avoid conflicts with existing repos)
+skip = !try(include.root.locals.cfg.enable_ecr, false)
+
 # Note: Cross-stack dependencies for sequencing are handled by full.stack.yaml
 # When running standalone application stack, these dependencies are not needed
 
@@ -22,9 +25,6 @@ inputs = {
 
   # Deployment type determines which repos to create
   deployment_type = try(include.root.locals.cfg.deployment_type, "full_stack")
-
-  # Enable ECR repository creation (default: false to avoid conflicts with existing repos)
-  enabled = try(include.root.locals.cfg.enable_ecr, false)
 
   # Tags from parent configuration
   tags = {
