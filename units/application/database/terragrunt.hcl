@@ -47,6 +47,9 @@ inputs = {
   performance_insights_enabled = true
   monitoring_interval = 60
 
+  # External Secrets Operator role ARN (optional - defaults to computed naming convention)
+  external_secrets_operator_role_arn = try(include.root.locals.cfg.external_secrets_operator_role_arn, null)
+
   # Tags from parent configuration
   tags = {
     Organization = include.root.locals.org
