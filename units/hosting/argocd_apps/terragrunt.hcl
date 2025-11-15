@@ -48,6 +48,7 @@ inputs = {
   sregion         = include.root.locals.sregion
   deployment      = include.root.locals.deployment
   domain_name     = try(include.root.locals.cfg.domain_name, "")
+  shortname       = try(include.root.locals.cfg.shortname, "hh")
   deployment_type = try(include.root.locals.cfg.deployment_type, "full_stack")
 
   # Cluster information from dependency
