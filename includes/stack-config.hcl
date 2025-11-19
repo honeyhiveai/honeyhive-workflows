@@ -3,19 +3,29 @@
 
 locals {
   # Read tenant configuration
-  # Ensure CONFIG_PATH is absolute - convert relative paths to absolute
-  config_path_raw = get_env("CONFIG_PATH")
-  # Resolve to absolute path: if already absolute use as-is, otherwise resolve relative to workflow-repo root
-  # When targeting specific units, CONFIG_PATH might be relative, so resolve it from the includes directory
-  # Use find_in_parent_folders to locate includes directory, then resolve relative paths from there
-  includes_dir = get_parent_terragrunt_dir("includes")
-  # If path is absolute, use as-is. Otherwise resolve relative to includes directory (workflow-repo root)
-  # Handle both absolute paths and relative paths like "../../../../config-repo/..."
-  config_path = startswith(local.config_path_raw, "/") ? local.config_path_raw : (
-    startswith(local.config_path_raw, "../") ? abspath("${local.includes_dir}/${local.config_path_raw}") : 
-    abspath("${get_terragrunt_dir()}/${local.config_path_raw}")
-  )
-  cfg                = yamldecode(file(local.config_path))
+  # CONFIG_PATH from environment - may be absolute or relative
+  config_path_raw = get_env("CONFIG_PATH", "")
+  
+  # Find workflow-repo root by locating the includes directory
+  # Units are at: units/{stack}/{unit}/terragrunt.hcl
+  # Includes are at: includes/stack-config.hcl
+  # So from a unit, we go up 3 levels to get to workflow-repo root
+  workflow_repo_root = get_parent_terragrunt_dir("includes")
+  
+  # Construct absolute config path
+  # If CONFIG_PATH is absolute (starts with /), use it directly
+  # If relative (starts with ../), resolve from workflow-repo root
+  # Otherwise, try to construct from known structure: config-repo/{path}
+  config_path = local.config_path_raw != "" ? (
+    startswith(local.config_path_raw, "/") ? local.config_path_raw : (
+      # Handle relative paths like "../../../../config-repo/honeyhive/usw2/federated-usw2-cp-dhruv.yaml"
+      startswith(local.config_path_raw, "../") ? abspath("${local.workflow_repo_root}/${local.config_path_raw}") :
+      # Handle paths relative to workflow-repo root (without ../)
+      abspath("${local.workflow_repo_root}/${local.config_path_raw}")
+    )
+  ) : "${local.workflow_repo_root}/config-repo/tenant.yaml"  # Fallback
+  
+  cfg = yamldecode(file(local.config_path))
 
   # Core parameters
   org        = local.cfg.org
