@@ -3,7 +3,7 @@
 
 locals {
   # Read tenant configuration
-  # CONFIG_PATH from environment - may be absolute or relative
+  # CONFIG_PATH from environment - now always relative to workflow root (../config-repo/...)
   config_path_raw = get_env("CONFIG_PATH", "")
   
   # Find workflow-repo root by locating the includes directory
@@ -11,23 +11,9 @@ locals {
   workflow_repo_root = get_parent_terragrunt_dir("includes")
   
   # Construct absolute config path
-  # The issue: get_env("CONFIG_PATH") may return relative path "../../../../config-repo/..."
-  # even though CONFIG_PATH env var is set as absolute in workflow
-  # This happens because Terragrunt reads env vars at parse time, before cd'ing into unit directory
-  # Solution: Extract "config-repo" portion using split() and construct absolute path from workflow root
-  # Then use abspath() relative to workflow root to ensure it's absolute
-  config_path_splits = split("config-repo", local.config_path_raw)
-  
-  # Construct absolute path
-  config_path_relative = startswith(local.config_path_raw, "/") ? local.config_path_raw : (
-    # For relative paths, extract part after "config-repo" and prepend workflow root
-    length(local.config_path_splits) > 1 ? "${local.workflow_repo_root}/config-repo${local.config_path_splits[1]}" : "${local.workflow_repo_root}/config-repo/tenant.yaml"
-  )
-  
-  # Use abspath() relative to workflow root to ensure path is absolute
-  # abspath() resolves relative paths based on current working directory, so we need to cd to workflow root first
-  # Since we can't cd in Terragrunt, we construct the absolute path manually
-  config_path = startswith(local.config_path_relative, "/") ? local.config_path_relative : abspath("${local.workflow_repo_root}/${local.config_path_relative}")
+  # CONFIG_PATH is now always relative to workflow root (e.g., ../config-repo/honeyhive/usw2/federated-usw2-cp-dhruv.yaml)
+  # Use abspath() to resolve it relative to workflow root
+  config_path = abspath("${local.workflow_repo_root}/${local.config_path_raw}")
   
   cfg = yamldecode(file(local.config_path))
 
