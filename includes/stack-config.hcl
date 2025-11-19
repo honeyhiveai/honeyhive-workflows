@@ -24,8 +24,10 @@ locals {
   config_path_after_repo = length(local.config_path_splits) > 1 ? local.config_path_splits[1] : "tenant.yaml"
   
   # Construct absolute path: parent of workflow root + config-repo + path after config-repo
-  # Ensure the path starts with / to make it absolute
-  config_path = startswith(local.workflow_parent, "/") ? "${local.workflow_parent}/config-repo/${local.config_path_after_repo}" : abspath("${local.workflow_parent}/config-repo/${local.config_path_after_repo}")
+  # Use abspath() to resolve any remaining relative components
+  # This ensures the path is always absolute regardless of Terragrunt's working directory
+  config_path_constructed = "${local.workflow_parent}/config-repo/${local.config_path_after_repo}"
+  config_path = abspath(local.config_path_constructed)
   
   cfg = yamldecode(file(local.config_path))
 
