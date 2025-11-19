@@ -23,8 +23,8 @@ locals {
         # Split by "config-repo" and take the part after it, then prepend "config-repo"
         # Example: "../../../../config-repo/honeyhive/..." -> ["../../../../", "/honeyhive/..."]
         # We want: "config-repo/honeyhive/..."
-        parts = split("config-repo", local.config_path_raw)
-        length(parts) > 1 ? "${local.workflow_repo_root}/config-repo${parts[1]}" : "${local.workflow_repo_root}/${local.config_path_raw}"
+        # Note: split() returns a list, we need to check length and access parts[1]
+        length(split("config-repo", local.config_path_raw)) > 1 ? "${local.workflow_repo_root}/config-repo${split("config-repo", local.config_path_raw)[1]}" : "${local.workflow_repo_root}/${local.config_path_raw}"
       ) : (
         # Fallback: try abspath with workflow_repo_root
         abspath("${local.workflow_repo_root}/${local.config_path_raw}")
