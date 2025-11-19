@@ -23,7 +23,7 @@ locals {
   config_path_after_repo = length(config_path_splits) > 1 ? config_path_splits[1] : "tenant.yaml"
   
   # Construct absolute path: parent of workflow root + config-repo + path after config-repo
-  config_path = "${workflow_parent}/config-repo/${config_path_after_repo}"
+  config_path = "${local.workflow_parent}/config-repo/${local.config_path_after_repo}"
   
   cfg = yamldecode(file(local.config_path))
 
