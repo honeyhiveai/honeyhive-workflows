@@ -5,7 +5,8 @@ locals {
   # Read tenant configuration
   # Ensure CONFIG_PATH is absolute - convert relative paths to absolute
   config_path_raw = get_env("CONFIG_PATH")
-  config_path = startswith(local.config_path_raw, "/") ? local.config_path_raw : "${get_terragrunt_dir()}/${local.config_path_raw}"
+  # Use abspath() to resolve relative paths, or use as-is if already absolute
+  config_path = startswith(local.config_path_raw, "/") ? local.config_path_raw : abspath("${get_terragrunt_dir()}/${local.config_path_raw}")
   cfg                = yamldecode(file(local.config_path))
 
   # Core parameters
