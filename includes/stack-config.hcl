@@ -14,15 +14,12 @@ locals {
   # The issue: get_env("CONFIG_PATH") may return relative path "../../../../config-repo/..."
   # even though CONFIG_PATH env var is set as absolute in workflow
   # This happens because Terragrunt reads env vars at parse time, before cd'ing into unit directory
-  # Solution: Use pathexpand() to resolve ~ and relative paths, then extract "config-repo" portion
-  # If pathexpand() doesn't resolve to absolute, use split() to extract from relative path
-  config_path_expanded = pathexpand(local.config_path_raw)
-  
-  # Extract "config-repo" portion from path (works for both absolute and relative)
-  config_path_splits = split("config-repo", local.config_path_expanded)
+  # Solution: Extract "config-repo" portion and construct absolute path from workflow root
+  # Split the path to find "config-repo" marker
+  config_path_splits = split("config-repo", local.config_path_raw)
   
   # Construct absolute path
-  config_path = startswith(local.config_path_expanded, "/") ? local.config_path_expanded : (
+  config_path = startswith(local.config_path_raw, "/") ? local.config_path_raw : (
     # For relative paths, extract part after "config-repo" and prepend workflow root
     length(local.config_path_splits) > 1 ? "${local.workflow_repo_root}/config-repo${local.config_path_splits[1]}" : "${local.workflow_repo_root}/config-repo/tenant.yaml"
   )
