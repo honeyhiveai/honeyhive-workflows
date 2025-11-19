@@ -203,10 +203,14 @@ jobs:
             # Ensure CONFIG_PATH is absolute (convert relative to absolute if needed)
             if [[ "$CONFIG_PATH" != /* ]]; then
               CONFIG_PATH="$(cd "${{ github.workspace }}" && pwd)/config-repo/${{ inputs.config_file != '' && inputs.config_file || format('{0}/{1}.yaml', inputs.config_path, inputs.environment) }}"
-              export CONFIG_PATH
             fi
+            # Always export CONFIG_PATH to ensure it's available to Terragrunt
+            export CONFIG_PATH
             echo "Using CONFIG_PATH: $CONFIG_PATH"
+            echo "CONFIG_PATH is absolute: $([[ $CONFIG_PATH == /* ]] && echo 'yes' || echo 'no')"
             cd "../../../units/${{ inputs.stack }}/${{ inputs.target_unit }}"
+            # Verify CONFIG_PATH is still set after cd
+            echo "CONFIG_PATH after cd: $CONFIG_PATH"
             case "${{ inputs.action }}" in
               validate)
                 terragrunt validate
