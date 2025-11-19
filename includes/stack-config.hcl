@@ -14,15 +14,15 @@ locals {
   # The issue: get_env("CONFIG_PATH") returns relative path "../../../../config-repo/..."
   # even though CONFIG_PATH env var is set as absolute in workflow
   # This happens because Terragrunt reads env vars at parse time, before cd'ing into unit directory
-  # Solution: Use split() to extract path after "config-repo" and construct absolute path
-  # Split the relative path to find "config-repo" marker
-  config_path_splits = split("config-repo", local.config_path_raw != "" ? local.config_path_raw : "config-repo/")
+  # Solution: Extract path after "config-repo" using split() and construct absolute path
+  # When CONFIG_PATH is relative like "../../../../config-repo/honeyhive/usw2/federated-usw2-cp-dhruv.yaml"
+  # split("config-repo") gives: ["../../../../", "/honeyhive/usw2/federated-usw2-cp-dhruv.yaml"]
+  # We extract parts[1] and prepend workflow_repo_root + "/config-repo"
+  config_path_splits = split("config-repo", local.config_path_raw)
   
-  # Construct absolute path: if absolute use as-is, otherwise extract from relative path
+  # Construct absolute path
   config_path = startswith(local.config_path_raw, "/") ? local.config_path_raw : (
-    # For relative paths like "../../../../config-repo/honeyhive/usw2/federated-usw2-cp-dhruv.yaml"
-    # split("config-repo") gives us ["../../../../", "/honeyhive/usw2/federated-usw2-cp-dhruv.yaml"]
-    # We want: workflow_repo_root + "/config-repo" + parts[1]
+    # Check if split found "config-repo" (length > 1 means it was found)
     length(local.config_path_splits) > 1 ? "${local.workflow_repo_root}/config-repo${local.config_path_splits[1]}" : "${local.workflow_repo_root}/config-repo/tenant.yaml"
   )
   
