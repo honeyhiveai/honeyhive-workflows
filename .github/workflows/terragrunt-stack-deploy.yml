@@ -195,9 +195,17 @@ jobs:
         env:
           # Terragrunt will render units into .terragrunt-stack/; abspath in your include guards handle that.
           TG_PARALLELISM: ${{ inputs.queue_max_parallelism }}
+          # Ensure CONFIG_PATH is absolute when targeting specific units
+          CONFIG_PATH: ${{ env.CONFIG_PATH }}
         run: |
           if [ -n "${{ inputs.target_unit }}" ]; then
             echo "🎯 Targeting specific unit: ${{ inputs.target_unit }}"
+            # Ensure CONFIG_PATH is absolute (convert relative to absolute if needed)
+            if [[ "$CONFIG_PATH" != /* ]]; then
+              CONFIG_PATH="$(cd "${{ github.workspace }}" && pwd)/config-repo/${{ inputs.config_file != '' && inputs.config_file || format('{0}/{1}.yaml', inputs.config_path, inputs.environment) }}"
+              export CONFIG_PATH
+            fi
+            echo "Using CONFIG_PATH: $CONFIG_PATH"
             cd "../../../units/${{ inputs.stack }}/${{ inputs.target_unit }}"
             case "${{ inputs.action }}" in
               validate)
