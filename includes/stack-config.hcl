@@ -12,13 +12,16 @@ locals {
   
   # Construct absolute config path
   # CONFIG_PATH is now always relative to workflow root (e.g., ../config-repo/honeyhive/usw2/federated-usw2-cp-dhruv.yaml)
-  # Extract the part after "../config-repo" and construct absolute path from workflow root's parent
+  # Extract the part after "../config-repo/" and construct absolute path from workflow root's parent
   # Since workflow_repo_root is the workflow-repo directory, its parent is github.workspace
-  # So config-repo is at: ${dirname(workflow_repo_root)}/config-repo/...
-  config_path_splits = split("../config-repo/", local.config_path_raw)
+  # So config-repo is at: ${path.root}/../config-repo/... but we need to resolve this properly
+  # Use replace() to substitute "../config-repo/" with the absolute path
+  config_path_after_repo = replace(local.config_path_raw, "../config-repo/", "")
   
   # Construct absolute path: parent of workflow root + config-repo + path after config-repo
-  config_path = length(local.config_path_splits) > 1 ? "${dirname(local.workflow_repo_root)}/config-repo/${local.config_path_splits[1]}" : "${dirname(local.workflow_repo_root)}/config-repo/tenant.yaml"
+  # Get parent directory by going up one level from workflow_repo_root
+  workflow_parent = replace(local.workflow_repo_root, "/workflow-repo", "")
+  config_path = "${workflow_parent}/config-repo/${config_path_after_repo}"
   
   cfg = yamldecode(file(local.config_path))
 
