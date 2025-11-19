@@ -7,9 +7,14 @@ locals {
   config_path_raw = get_env("CONFIG_PATH")
   # Resolve to absolute path: if already absolute use as-is, otherwise resolve relative to workflow-repo root
   # When targeting specific units, CONFIG_PATH might be relative, so resolve it from the includes directory
-  # find_in_parent_folders("includes") gives us the workflow-repo root
+  # Use find_in_parent_folders to locate includes directory, then resolve relative paths from there
   includes_dir = get_parent_terragrunt_dir("includes")
-  config_path = startswith(local.config_path_raw, "/") ? local.config_path_raw : abspath("${local.includes_dir}/${local.config_path_raw}")
+  # If path is absolute, use as-is. Otherwise resolve relative to includes directory (workflow-repo root)
+  # Handle both absolute paths and relative paths like "../../../../config-repo/..."
+  config_path = startswith(local.config_path_raw, "/") ? local.config_path_raw : (
+    startswith(local.config_path_raw, "../") ? abspath("${local.includes_dir}/${local.config_path_raw}") : 
+    abspath("${get_terragrunt_dir()}/${local.config_path_raw}")
+  )
   cfg                = yamldecode(file(local.config_path))
 
   # Core parameters
