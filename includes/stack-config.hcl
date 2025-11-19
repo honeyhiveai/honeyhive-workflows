@@ -7,21 +7,33 @@ locals {
   config_path_raw = get_env("CONFIG_PATH", "")
   
   # Find workflow-repo root by locating the includes directory
-  # Units are at: units/{stack}/{unit}/terragrunt.hcl
-  # Includes are at: includes/stack-config.hcl
-  # So from a unit, we go up 3 levels to get to workflow-repo root
+  # get_parent_terragrunt_dir("includes") finds the directory containing "includes"
   workflow_repo_root = get_parent_terragrunt_dir("includes")
   
   # Construct absolute config path
   # If CONFIG_PATH is absolute (starts with /), use it directly
-  # If relative (starts with ../), resolve from workflow-repo root
-  # Otherwise, try to construct from known structure: config-repo/{path}
+  # If relative (starts with ../), manually resolve by counting ../ and building path
+  # Otherwise, assume it's relative to workflow-repo root
   config_path = local.config_path_raw != "" ? (
     startswith(local.config_path_raw, "/") ? local.config_path_raw : (
       # Handle relative paths like "../../../../config-repo/honeyhive/usw2/federated-usw2-cp-dhruv.yaml"
-      startswith(local.config_path_raw, "../") ? abspath("${local.workflow_repo_root}/${local.config_path_raw}") :
-      # Handle paths relative to workflow-repo root (without ../)
-      abspath("${local.workflow_repo_root}/${local.config_path_raw}")
+      # Extract the actual file path after the ../../
+      startswith(local.config_path_raw, "../") ? (
+        # Count ../ segments and extract the actual path
+        # For "../../../../config-repo/..." we need to go up 4 levels from includes
+        # includes is at workflow-repo-root/includes, so going up gets us to workflow-repo-root
+        # Then append the path after the ../../
+        # Simple approach: replace ../ with empty and prepend workflow_repo_root
+        # But we need to handle the fact that ../ means "go up one level"
+        # Since includes is at workflow-repo-root/includes, and we're resolving from there,
+        # we need to go up to workflow-repo-root first
+        # Actually, abspath should work, but let's try a different approach:
+        # Use path functions to normalize
+        pathexpand("${local.workflow_repo_root}/${replace(local.config_path_raw, "../", "")}")
+      ) : (
+        # Handle paths relative to workflow-repo root (without ../)
+        "${local.workflow_repo_root}/${local.config_path_raw}"
+      )
     )
   ) : "${local.workflow_repo_root}/config-repo/tenant.yaml"  # Fallback
   
