@@ -11,28 +11,23 @@ locals {
   workflow_repo_root = get_parent_terragrunt_dir("includes")
   
   # Construct absolute config path
-  # If CONFIG_PATH is absolute (starts with /), use it directly
-  # If relative (starts with ../), manually resolve by counting ../ and building path
-  # Otherwise, assume it's relative to workflow-repo root
+  # The issue: get_env("CONFIG_PATH") returns relative path "../../../../config-repo/..."
+  # even though CONFIG_PATH env var is set as absolute in workflow
+  # This happens because Terragrunt reads env vars at parse time, before cd'ing into unit directory
+  # Solution: Extract the actual file path from the relative path and prepend workflow-repo-root
   config_path = local.config_path_raw != "" ? (
     startswith(local.config_path_raw, "/") ? local.config_path_raw : (
       # Handle relative paths like "../../../../config-repo/honeyhive/usw2/federated-usw2-cp-dhruv.yaml"
-      # Extract the actual file path after the ../../
-      startswith(local.config_path_raw, "../") ? (
-        # Count ../ segments and extract the actual path
-        # For "../../../../config-repo/..." we need to go up 4 levels from includes
-        # includes is at workflow-repo-root/includes, so going up gets us to workflow-repo-root
-        # Then append the path after the ../../
-        # Simple approach: replace ../ with empty and prepend workflow_repo_root
-        # But we need to handle the fact that ../ means "go up one level"
-        # Since includes is at workflow-repo-root/includes, and we're resolving from there,
-        # we need to go up to workflow-repo-root first
-        # Actually, abspath should work, but let's try a different approach:
-        # Use path functions to normalize
-        pathexpand("${local.workflow_repo_root}/${replace(local.config_path_raw, "../", "")}")
+      # Extract everything from "config-repo" onwards using split()
+      contains(local.config_path_raw, "config-repo") ? (
+        # Split by "config-repo" and take the part after it, then prepend "config-repo"
+        # Example: "../../../../config-repo/honeyhive/..." -> ["../../../../", "/honeyhive/..."]
+        # We want: "config-repo/honeyhive/..."
+        parts = split("config-repo", local.config_path_raw)
+        length(parts) > 1 ? "${local.workflow_repo_root}/config-repo${parts[1]}" : "${local.workflow_repo_root}/${local.config_path_raw}"
       ) : (
-        # Handle paths relative to workflow-repo root (without ../)
-        "${local.workflow_repo_root}/${local.config_path_raw}"
+        # Fallback: try abspath with workflow_repo_root
+        abspath("${local.workflow_repo_root}/${local.config_path_raw}")
       )
     )
   ) : "${local.workflow_repo_root}/config-repo/tenant.yaml"  # Fallback
