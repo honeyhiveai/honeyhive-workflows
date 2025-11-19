@@ -6,29 +6,32 @@ locals {
   # CONFIG_PATH from environment - now always relative to workflow root (../config-repo/...)
   config_path_raw = get_env("CONFIG_PATH", "")
   
+  # Get the absolute path of the current terragrunt.hcl file's directory (the unit directory)
+  # This is guaranteed to be absolute by Terragrunt
+  current_unit_dir = get_terragrunt_dir()
+  
   # Find workflow-repo root by locating the includes directory
   # get_parent_terragrunt_dir("includes") finds the directory containing "includes"
-  # This should return an absolute path, but we'll verify it starts with "/"
-  workflow_repo_root_raw = get_parent_terragrunt_dir("includes")
-  workflow_repo_root_abs = startswith(local.workflow_repo_root_raw, "/") ? local.workflow_repo_root_raw : abspath(local.workflow_repo_root_raw)
+  # This should return an absolute path
+  workflow_repo_root = get_parent_terragrunt_dir("includes")
   
   # Construct absolute config path
   # CONFIG_PATH is now always relative to workflow root (e.g., ../config-repo/honeyhive/usw2/federated-usw2-cp-dhruv.yaml)
   # Extract the part after "../config-repo/" and construct absolute path from workflow root's parent
   # Since workflow_repo_root is the workflow-repo directory, its parent is github.workspace
   # Split workflow_repo_root on "/workflow-repo" to get the parent directory
-  workflow_parent_splits = split("/workflow-repo", local.workflow_repo_root_abs)
-  workflow_parent = length(local.workflow_parent_splits) > 0 ? local.workflow_parent_splits[0] : dirname(local.workflow_repo_root_abs)
+  workflow_parent_splits = split("/workflow-repo", local.workflow_repo_root)
+  workflow_parent = length(local.workflow_parent_splits) > 0 ? local.workflow_parent_splits[0] : dirname(local.workflow_repo_root)
   
   # Extract path after "../config-repo/"
   config_path_splits = split("../config-repo/", local.config_path_raw)
   config_path_after_repo = length(local.config_path_splits) > 1 ? local.config_path_splits[1] : "tenant.yaml"
   
   # Construct absolute path: parent of workflow root + config-repo + path after config-repo
-  # Since workflow_parent should be absolute (from split or dirname), construct path directly
-  # Ensure it starts with "/" to make it truly absolute
-  config_path_constructed = "${local.workflow_parent}/config-repo/${local.config_path_after_repo}"
-  config_path = startswith(local.config_path_constructed, "/") ? local.config_path_constructed : abspath(local.config_path_constructed)
+  # workflow_parent should be absolute (from split or dirname of absolute path)
+  # Prepend "/" if not already absolute to ensure it's truly absolute
+  config_path_constructed = startswith(local.workflow_parent, "/") ? "${local.workflow_parent}/config-repo/${local.config_path_after_repo}" : "/${local.workflow_parent}/config-repo/${local.config_path_after_repo}"
+  config_path = local.config_path_constructed
   
   cfg = yamldecode(file(local.config_path))
 
