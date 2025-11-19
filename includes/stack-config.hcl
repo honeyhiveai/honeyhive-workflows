@@ -8,8 +8,9 @@ locals {
   
   # Find workflow-repo root by locating the includes directory
   # get_parent_terragrunt_dir("includes") finds the directory containing "includes"
-  # Use abspath() to ensure it's absolute (Terragrunt may return relative paths)
-  workflow_repo_root_abs = abspath(get_parent_terragrunt_dir("includes"))
+  # This should return an absolute path, but we'll verify it starts with "/"
+  workflow_repo_root_raw = get_parent_terragrunt_dir("includes")
+  workflow_repo_root_abs = startswith(local.workflow_repo_root_raw, "/") ? local.workflow_repo_root_raw : abspath(local.workflow_repo_root_raw)
   
   # Construct absolute config path
   # CONFIG_PATH is now always relative to workflow root (e.g., ../config-repo/honeyhive/usw2/federated-usw2-cp-dhruv.yaml)
@@ -24,9 +25,10 @@ locals {
   config_path_after_repo = length(local.config_path_splits) > 1 ? local.config_path_splits[1] : "tenant.yaml"
   
   # Construct absolute path: parent of workflow root + config-repo + path after config-repo
-  # Use abspath() to ensure the final path is absolute (handles any edge cases)
+  # Since workflow_parent should be absolute (from split or dirname), construct path directly
+  # Ensure it starts with "/" to make it truly absolute
   config_path_constructed = "${local.workflow_parent}/config-repo/${local.config_path_after_repo}"
-  config_path = abspath(local.config_path_constructed)
+  config_path = startswith(local.config_path_constructed, "/") ? local.config_path_constructed : abspath(local.config_path_constructed)
   
   cfg = yamldecode(file(local.config_path))
 
