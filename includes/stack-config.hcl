@@ -18,11 +18,14 @@ locals {
   # Split the path to find "config-repo" marker
   config_path_splits = split("config-repo", local.config_path_raw)
   
-  # Construct absolute path
-  config_path = startswith(local.config_path_raw, "/") ? local.config_path_raw : (
+  # Construct absolute path - use abspath() to ensure it's always absolute
+  config_path_constructed = startswith(local.config_path_raw, "/") ? local.config_path_raw : (
     # For relative paths, extract part after "config-repo" and prepend workflow root
     length(local.config_path_splits) > 1 ? "${local.workflow_repo_root}/config-repo${local.config_path_splits[1]}" : "${local.workflow_repo_root}/config-repo/tenant.yaml"
   )
+  
+  # Use abspath() to ensure the path is always absolute (handles any remaining relative components)
+  config_path = abspath(local.config_path_constructed)
   
   cfg = yamldecode(file(local.config_path))
 
