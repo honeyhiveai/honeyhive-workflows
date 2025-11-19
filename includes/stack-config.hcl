@@ -16,7 +16,7 @@ locals {
   # Since workflow_repo_root is the workflow-repo directory, its parent is github.workspace
   # Split workflow_repo_root on "/workflow-repo" to get the parent directory
   workflow_parent_splits = split("/workflow-repo", local.workflow_repo_root)
-  workflow_parent = length(workflow_parent_splits) > 0 ? workflow_parent_splits[0] : local.workflow_repo_root
+  workflow_parent = length(local.workflow_parent_splits) > 0 ? local.workflow_parent_splits[0] : local.workflow_repo_root
   
   # Extract path after "../config-repo/"
   config_path_splits = split("../config-repo/", local.config_path_raw)
