@@ -16,7 +16,7 @@ locals {
   # This happens because Terragrunt reads env vars at parse time, before cd'ing into unit directory
   # Solution: Extract the actual file path from the relative path and prepend workflow-repo-root
   # Use split() to find "config-repo" and extract everything after it
-  config_path_splits = split("config-repo", local.config_path_raw)
+  config_path_splits = split("config-repo", local.config_path_raw != "" ? local.config_path_raw : "")
   config_path = local.config_path_raw != "" ? (
     startswith(local.config_path_raw, "/") ? local.config_path_raw : (
       # Handle relative paths like "../../../../config-repo/honeyhive/usw2/federated-usw2-cp-dhruv.yaml"
