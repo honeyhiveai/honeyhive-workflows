@@ -15,17 +15,13 @@ locals {
   # even though CONFIG_PATH env var is set as absolute in workflow
   # This happens because Terragrunt reads env vars at parse time, before cd'ing into unit directory
   # Solution: Extract the actual file path from the relative path and prepend workflow-repo-root
+  # Use split() to find "config-repo" and extract everything after it
+  config_path_splits = split("config-repo", local.config_path_raw)
   config_path = local.config_path_raw != "" ? (
     startswith(local.config_path_raw, "/") ? local.config_path_raw : (
       # Handle relative paths like "../../../../config-repo/honeyhive/usw2/federated-usw2-cp-dhruv.yaml"
-      # Extract everything from "config-repo" onwards using split()
-      contains(local.config_path_raw, "config-repo") ? (
-        # Split by "config-repo" and take the part after it, then prepend "config-repo"
-        # Example: "../../../../config-repo/honeyhive/..." -> ["../../../../", "/honeyhive/..."]
-        # We want: "config-repo/honeyhive/..."
-        # Note: split() returns a list, we need to check length and access parts[1]
-        length(split("config-repo", local.config_path_raw)) > 1 ? "${local.workflow_repo_root}/config-repo${split("config-repo", local.config_path_raw)[1]}" : "${local.workflow_repo_root}/${local.config_path_raw}"
-      ) : (
+      # Extract everything from "config-repo" onwards
+      length(local.config_path_splits) > 1 ? "${local.workflow_repo_root}/config-repo${local.config_path_splits[1]}" : (
         # Fallback: try abspath with workflow_repo_root
         abspath("${local.workflow_repo_root}/${local.config_path_raw}")
       )
