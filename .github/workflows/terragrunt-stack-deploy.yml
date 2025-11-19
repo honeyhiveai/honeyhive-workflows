@@ -199,9 +199,9 @@ jobs:
         env:
           # Terragrunt will render units into .terragrunt-stack/; abspath in your include guards handle that.
           TG_PARALLELISM: ${{ inputs.queue_max_parallelism }}
-          # CONFIG_PATH is relative to workflow root (workflow-repo) so Terragrunt can resolve it correctly
-          # config-repo is a sibling directory to workflow-repo, so path is ../config-repo/...
-          CONFIG_PATH: ../config-repo/${{ inputs.config_file != '' && inputs.config_file || format('{0}/{1}.yaml', inputs.config_path, inputs.environment) }}
+          # CONFIG_PATH must be an absolute path (best practice for CI/CD environment variables)
+          # This ensures the path is valid regardless of working directory changes
+          CONFIG_PATH: ${{ github.workspace }}/config-repo/${{ inputs.config_file != '' && inputs.config_file || format('{0}/{1}.yaml', inputs.config_path, inputs.environment) }}
         run: |
           if [ -n "${{ inputs.target_unit }}" ]; then
             echo "🎯 Targeting specific unit: ${{ inputs.target_unit }}"
