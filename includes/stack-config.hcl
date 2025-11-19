@@ -14,18 +14,15 @@ locals {
   # The issue: get_env("CONFIG_PATH") may return relative path "../../../../config-repo/..."
   # even though CONFIG_PATH env var is set as absolute in workflow
   # This happens because Terragrunt reads env vars at parse time, before cd'ing into unit directory
-  # Solution: Extract "config-repo" portion and construct absolute path from workflow root
-  # Split the path to find "config-repo" marker
-  config_path_splits = split("config-repo", local.config_path_raw)
+  # Solution: If path is absolute, use as-is. Otherwise, extract "config-repo" portion and construct absolute path
+  # Use regex to find "config-repo" in the path (works for both absolute and relative)
+  config_path_match = regex(".*config-repo(/.*)", local.config_path_raw)
   
-  # Construct absolute path - use abspath() to ensure it's always absolute
-  config_path_constructed = startswith(local.config_path_raw, "/") ? local.config_path_raw : (
-    # For relative paths, extract part after "config-repo" and prepend workflow root
-    length(local.config_path_splits) > 1 ? "${local.workflow_repo_root}/config-repo${local.config_path_splits[1]}" : "${local.workflow_repo_root}/config-repo/tenant.yaml"
+  # Construct absolute path
+  config_path = startswith(local.config_path_raw, "/") ? local.config_path_raw : (
+    # For relative paths, extract part after "config-repo" using regex match
+    length(local.config_path_match) > 0 ? "${local.workflow_repo_root}/config-repo${local.config_path_match[0]}" : "${local.workflow_repo_root}/config-repo/tenant.yaml"
   )
-  
-  # Use abspath() to ensure the path is always absolute (handles any remaining relative components)
-  config_path = abspath(local.config_path_constructed)
   
   cfg = yamldecode(file(local.config_path))
 
