@@ -90,15 +90,15 @@ on:
       HONEYHIVE_HELM_DEPLOY_KEY:
         required: false
 
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
 jobs:
   deploy:
     name: 'Deploy ${{ inputs.stack }} Stack'
     runs-on: ubuntu-latest
-    
-    permissions:
-      id-token: write  # For AWS OIDC authentication
-      contents: read   # For repository access
-      pull-requests: write  # For PR comments
 
     env:
       TERRAGRUNT_NON_INTERACTIVE: "true"

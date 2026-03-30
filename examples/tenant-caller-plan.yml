@@ -11,8 +11,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
-  pull-requests: write
 
 jobs:
   detect_changes:
@@ -47,6 +45,10 @@ jobs:
     needs: detect_changes
     if: needs.detect_changes.outputs.stacks != '[]'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
     strategy:
       matrix:
         stack: ${{ fromJson(needs.detect_changes.outputs.stacks) }}
