@@ -17,6 +17,9 @@ on:
         default: 'examples/configs/control-plane.yaml'
         type: string
 
+permissions:
+  contents: read
+
 jobs:
   test-selector:
     name: Test Stack Selector Script

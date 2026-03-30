@@ -19,8 +19,7 @@ on:
         default: "Manual validation trigger"
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   validate-workflows:
